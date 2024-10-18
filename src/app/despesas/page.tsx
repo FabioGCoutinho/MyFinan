@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,9 +14,39 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/ui/header'
+import { supabase } from '@/util/supabase/server'
+import { toast } from '@/hooks/use-toast'
+
+interface CatExpense {
+  id: number
+  category: string
+  created_at: string
+}
 
 export default function Despesas() {
+  const [expense, setExpense] = useState('')
   const [valor, setValor] = useState('')
+  const [value, setValue] = useState(0)
+  const [category, setCategory] = useState('')
+  const [date, setDate] = useState('')
+  const [obs, setObs] = useState('')
+  const [catExpense, setCatExpense] = useState<CatExpense[]>()
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchCatExpense() {
+      try {
+        const { data, error } = await supabase.from('cat_expense').select('*')
+        if (error) throw error
+        setCatExpense(data)
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      } catch (error: any) {
+        setError(error?.message)
+      }
+    }
+
+    fetchCatExpense()
+  }, [])
 
   const formatarValor = (value: string) => {
     // Remove todos os caracteres não numéricos
@@ -25,6 +54,7 @@ export default function Despesas() {
 
     // Converte para centavos
     const centavos = Number.parseInt(numero) / 100
+    setValue(centavos)
 
     // Formata o valor
     return centavos.toLocaleString('pt-BR', {
@@ -40,10 +70,37 @@ export default function Despesas() {
     setValor(valorFormatado)
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     // Aqui você pode adicionar a lógica para enviar os dados do formulário
-    console.log('Formulário enviado!')
+    try {
+      const { data, error } = await supabase.from('expense').insert({
+        expense,
+        value,
+        created_at: date,
+        category,
+        obs,
+      })
+
+      if (error) throw error
+
+      toast({
+        variant: 'default',
+        title: 'Sucesso!',
+        description: `A sua despesa ${expense} foi cadastrada!`,
+      })
+
+      setExpense('')
+      setValor('')
+      setValue(0)
+      setCategory('')
+      setDate('')
+      setObs('')
+
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    } catch (error: any) {
+      setError(error?.message)
+    }
   }
 
   return (
@@ -60,12 +117,18 @@ export default function Despesas() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="despesa">Despesa</Label>
-                <Input id="despesa" placeholder="Nome da despesa" required />
+                <Input
+                  id="expense"
+                  placeholder="Nome da despesa"
+                  value={expense}
+                  onChange={e => setExpense(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="valor">Valor</Label>
                 <Input
-                  id="valor"
+                  id="price"
                   placeholder="R$ 0,00"
                   value={valor}
                   onChange={handleValorChange}
@@ -74,29 +137,37 @@ export default function Despesas() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="data">Data</Label>
-                <Input id="data" type="date" required />
+                <Input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="categoria">Categoria</Label>
-                <Select required>
-                  <SelectTrigger id="categoria">
+                <Select onValueChange={e => setCategory(e)} required>
+                  <SelectTrigger id="category">
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
+
                   <SelectContent>
-                    <SelectItem value="combustivel">Combustível</SelectItem>
-                    <SelectItem value="supermercado">Supermercado</SelectItem>
-                    <SelectItem value="lanches">Lanches</SelectItem>
-                    <SelectItem value="bebidas">Bebidas</SelectItem>
-                    <SelectItem value="produtos">Produtos</SelectItem>
-                    <SelectItem value="diversos">Diversos</SelectItem>
+                    {catExpense?.map(item => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.category}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="observacao">Observação</Label>
+                <Label htmlFor="obs">Observação</Label>
                 <Textarea
                   id="observacao"
                   placeholder="Adicione uma observação (opcional)"
+                  value={obs}
+                  onChange={e => setObs(e.target.value)}
                 />
               </div>
               <Button
