@@ -16,6 +16,15 @@ import { Button } from '@/components/ui/button'
 import { Header } from '@/components/ui/header'
 import { supabase } from '@/util/supabase/server'
 import { toast } from '@/hooks/use-toast'
+import { AlertDialog } from '@radix-ui/react-alert-dialog'
+import {
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface CatExpense {
   id: number
@@ -32,6 +41,7 @@ export default function Despesas() {
   const [obs, setObs] = useState('')
   const [catExpense, setCatExpense] = useState<CatExpense[]>()
   const [error, setError] = useState<string | null>(null)
+  const [alertShow, setAlertShow] = useState(false)
 
   useEffect(() => {
     async function fetchCatExpense() {
@@ -84,23 +94,22 @@ export default function Despesas() {
 
       if (error) throw error
 
-      toast({
-        variant: 'default',
-        title: 'Sucesso!',
-        description: `A sua despesa ${expense} foi cadastrada!`,
-      })
-
-      setExpense('')
-      setValor('')
-      setValue(0)
-      setCategory('')
-      setDate('')
-      setObs('')
+      setAlertShow(true)
 
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     } catch (error: any) {
       setError(error?.message)
     }
+  }
+
+  function closeModal() {
+    setExpense('')
+    setValor('')
+    setValue(0)
+    setCategory('')
+    setDate('')
+    setObs('')
+    setAlertShow(false)
   }
 
   return (
@@ -110,7 +119,7 @@ export default function Despesas() {
         <Card className="w-full max-w-lg mx-auto">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-center">
-              Cadastro de Despesas
+              Adicinar Despesa
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -147,7 +156,11 @@ export default function Despesas() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="categoria">Categoria</Label>
-                <Select onValueChange={e => setCategory(e)} required>
+                <Select
+                  onValueChange={e => setCategory(e)}
+                  value={category}
+                  required
+                >
                   <SelectTrigger id="category">
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
@@ -179,6 +192,19 @@ export default function Despesas() {
             </form>
           </CardContent>
         </Card>
+        <AlertDialog open={alertShow} onOpenChange={closeModal}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sucesso!</AlertDialogTitle>
+              <AlertDialogDescription>
+                A receita {expense} foi cadastrada!
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   )
