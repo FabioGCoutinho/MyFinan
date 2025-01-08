@@ -1,5 +1,8 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { format, parseISO, startOfMonth } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { DollarSign, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 
 interface ChildComponentProps {
@@ -44,10 +47,9 @@ const data = [
 ]
 
 export function Overview({ revenue, expense }: ChildComponentProps) {
-  //faz a subitração da receita com a despesa
-  const total =
-    revenue.reduce((sum, item) => sum + item.value, 0) -
-    expense.reduce((sum, item) => sum + item.value, 0)
+  const [despesasFiltradas, setDespesasFiltradas] = useState(expense)
+  const [receitasFiltradas, setReceitasFiltradas] = useState(revenue)
+  const [date, setDate] = useState<Date>(startOfMonth(new Date()))
 
   // Ordenar o array pelo campo de data em ordem decrescente
   expense.sort(
@@ -55,8 +57,33 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )
 
+  useEffect(() => {
+    const filteredDespesas = expense.filter(despesa => {
+      const despesaDate = parseISO(despesa.created_at)
+      return (
+        despesaDate.getMonth() === date.getMonth() &&
+        despesaDate.getFullYear() === date.getFullYear()
+      )
+    })
+    const filteredRevenue = revenue.filter(revenue => {
+      const revenueDate = parseISO(revenue.created_at)
+      return (
+        revenueDate.getMonth() === date.getMonth() &&
+        revenueDate.getFullYear() === date.getFullYear()
+      )
+    })
+
+    setReceitasFiltradas(filteredRevenue)
+    setDespesasFiltradas(filteredDespesas)
+  }, [date, expense, revenue])
+
+  //faz a subitração da receita com a despesa
+  const total =
+    receitasFiltradas.reduce((sum, item) => sum + item.value, 0) -
+    despesasFiltradas.reduce((sum, item) => sum + item.value, 0)
+
   // Exibir apenas os últimos 5 itens
-  const lastFiveItems = expense.slice(0, 5)
+  const lastFiveItems = despesasFiltradas.slice(0, 5)
 
   return (
     <>
@@ -70,7 +97,7 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {revenue
+              {receitasFiltradas
                 .reduce((sum, item) => sum + item.value, 0)
                 .toLocaleString('pt-BR', {
                   style: 'currency',
@@ -91,7 +118,7 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {expense
+              {despesasFiltradas
                 .reduce((sum, item) => sum + item.value, 0)
                 .toLocaleString('pt-BR', {
                   style: 'currency',
@@ -112,7 +139,7 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {expense.length} Despesa no mês
+              {despesasFiltradas.length} Despesa no mês
             </div>
             <p className="text-xs text-muted-foreground">
               +19% em relação ao mês passado
@@ -174,28 +201,41 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
-              {lastFiveItems.map(item => (
-                <div key={item.id} className="flex items-center">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {item.expense}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(item.created_at).toLocaleString('pt-BR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
+              {lastFiveItems.length <= 0 ? (
+                <h1>Nenhuma despesa esse mês</h1>
+              ) : (
+                lastFiveItems.map(item => (
+                  <div key={item.id} className="flex items-center">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {item.expense}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {
+                          format(
+                            parseISO(item.created_at),
+                            "EEEE, dd 'de' LLLL 'de' yyyy",
+                            {
+                              locale: ptBR,
+                            }
+                          )
+                          // new Date(item.created_at).toLocaleString('pt-BR', {
+                          //   year: 'numeric',
+                          //   month: 'numeric',
+                          //   day: 'numeric',
+                          // })
+                        }
+                      </p>
+                    </div>
+                    <div className="ml-auto font-medium">
+                      {item.value.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
                       })}
-                    </p>
+                    </div>
                   </div>
-                  <div className="ml-auto font-medium">
-                    {item.value.toLocaleString('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL',
-                    })}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

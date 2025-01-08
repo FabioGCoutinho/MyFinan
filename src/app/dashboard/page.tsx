@@ -1,14 +1,12 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Download } from 'lucide-react'
-import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Header } from '@/components/ui/header'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/util/supabase/server'
+import { supabase } from '@/util/supabase/supabase'
 import { Overview } from './overview'
 import { Expense } from './expense'
 import { Revenue } from './revenue'
@@ -46,7 +44,7 @@ interface expenseProps {
 export default function DashboardPage() {
   const [revenue, setRevenue] = useState<revenueProps[]>([])
   const [expense, setExpense] = useState<expenseProps[]>([])
-  const [error, setError] = useState('')
+  const [revenueError, setError] = useState('')
 
   useEffect(() => {
     async function fetchRevenue() {
@@ -55,20 +53,18 @@ export default function DashboardPage() {
       const month = now.getMonth() + 1 // getMonth() retorna um valor de 0 a 11
 
       const startOfMonth = `${year}-${month.toString().padStart(2, '0')}-01`
-      const endOfMonth = `${year}-${month.toString().padStart(2, '0')}-31`
+      const endOfMonth = `${year}-${month.toString().padStart(2, '0')}-30`
 
       try {
         const [revenueData, expenseData] = await Promise.all([
-          supabase
-            .from('revenue')
-            .select('*, cat_revenue (id, category)')
-            .gte('created_at', startOfMonth)
-            .lte('created_at', endOfMonth),
+          supabase.from('revenue').select('*, cat_revenue (id, category)'),
+          // .gte('created_at', startOfMonth)
+          // .lte('created_at', endOfMonth),
           supabase
             .from('expense')
-            .select('*, cat_expense (id, category)')
-            .gte('created_at', startOfMonth)
-            .lte('created_at', endOfMonth),
+            .select('*, cat_expense (id, category)'),
+          // .gte('created_at', startOfMonth)
+          // .lte('created_at', endOfMonth),
         ])
 
         if (revenueData.error) throw revenueData.error

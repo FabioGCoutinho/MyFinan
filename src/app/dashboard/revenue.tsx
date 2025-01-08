@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { supabase } from '@/util/supabase/server'
+import { supabase } from '@/util/supabase/supabase'
 
 interface ChildComponentProps {
   revenue: {

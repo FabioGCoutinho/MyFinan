@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { supabase } from '@/util/supabase/server'
+import { supabase } from '@/util/supabase/supabase'
 
 interface ChildComponentProps {
   expense: {
@@ -203,7 +203,6 @@ export function Expense({ expense }: ChildComponentProps) {
 
   const isMobile = useIsMobile()
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     const filteredDespesas = expense.filter(despesa => {
       const despesaDate = parseISO(despesa.created_at)
@@ -214,7 +213,7 @@ export function Expense({ expense }: ChildComponentProps) {
       )
     })
     setDespesasFiltradas(filteredDespesas)
-  }, [date, categoria])
+  }, [date, categoria, expense])
 
   const handlePreviousMonth = () => {
     setDate(prevDate => startOfMonth(subMonths(prevDate, 1)))

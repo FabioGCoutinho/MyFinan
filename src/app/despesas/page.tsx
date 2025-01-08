@@ -14,7 +14,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/ui/header'
-import { supabase } from '@/util/supabase/server'
+import { supabase } from '@/util/supabase/supabase'
 import { toast } from '@/hooks/use-toast'
 import { AlertDialog } from '@radix-ui/react-alert-dialog'
 import {

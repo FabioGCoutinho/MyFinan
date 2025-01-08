@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { Button } from './button'
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
-
+import { signOut } from '@/components/actions'
 export function Header() {
   const { setTheme, theme } = useTheme()
 
@@ -105,6 +105,7 @@ export function Header() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <Button onClick={() => signOut()}>Sair</Button>
       </div>
     </header>
   )
