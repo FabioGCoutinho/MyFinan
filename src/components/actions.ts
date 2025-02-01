@@ -27,7 +27,7 @@ export async function login({ email, password }: loginProps) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  redirect('/auth/session')
 }
 
 export async function signup({ email, password }: loginProps) {
@@ -40,14 +40,17 @@ export async function signup({ email, password }: loginProps) {
     password,
   }
 
-  const { error } = await supabase.auth.signUp(data)
+  const {
+    error,
+    data: { user },
+  } = await supabase.auth.signUp(data)
 
   if (error) {
     redirect('/error')
   }
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  redirect('/auth/session')
 }
 
 export async function signOut() {
@@ -66,10 +69,10 @@ export async function signOut() {
   // })
 
   // Excluir cookies no lado do cliente
-  document.cookie =
-    'PHPSESSID=; Path=/; HttpOnly; Secure; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
-  document.cookie =
-    'sb-access-token=; Path=/; HttpOnly; Secure; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  // document.cookie =
+  //   'PHPSESSID=; Path=/; HttpOnly; Secure; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  // document.cookie =
+  //   'sb-access-token=; Path=/; HttpOnly; Secure; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
   // Adicione outros cookies que você deseja excluir aqui
 
   // Revalidar o caminho e redirecionar o usuário

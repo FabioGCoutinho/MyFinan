@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import type { User } from '@supabase/supabase-js'
 
 interface CatExpense {
   id: number
@@ -43,10 +44,16 @@ export default function Despesas() {
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
 
+  const a = localStorage.getItem('user')
+  const user = a ? JSON.parse(a) : null
+
   useEffect(() => {
     async function fetchCatExpense() {
       try {
-        const { data, error } = await supabase.from('cat_expense').select('*')
+        const { data, error } = await supabase
+          .from('cat_expense')
+          .select('*')
+          .eq('user_id', user.id)
         if (error) throw error
         setCatExpense(data)
         // biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -90,6 +97,7 @@ export default function Despesas() {
         created_at: date,
         category,
         obs,
+        user_id: user?.id,
       })
 
       if (error) throw error

@@ -48,122 +48,6 @@ interface CatProps {
   created_at: Date
 }
 
-// Dados de exemplo
-const despesas = [
-  {
-    id: 1,
-    nome: 'Aluguel',
-    descricao: 'Pagamento mensal do aluguel',
-    data: '2024-10-05',
-    categoria: 'Moradia',
-    valor: 1500,
-  },
-  {
-    id: 2,
-    nome: 'Supermercado',
-    descricao: 'Compras da semana',
-    data: '2024-10-10',
-    categoria: 'Alimentação',
-    valor: 400,
-  },
-  {
-    id: 3,
-    nome: 'Conta de luz',
-    descricao: 'Fatura de energia elétrica',
-    data: '2024-10-15',
-    categoria: 'Utilidades',
-    valor: 200,
-  },
-  {
-    id: 4,
-    nome: 'Academia',
-    descricao: 'Mensalidade da academia',
-    data: '2024-10-01',
-    categoria: 'Saúde',
-    valor: 120,
-  },
-  {
-    id: 5,
-    nome: 'Internet',
-    descricao: 'Mensalidade do provedor',
-    data: '2024-10-07',
-    categoria: 'Utilidades',
-    valor: 100,
-  },
-  {
-    id: 6,
-    nome: 'Transporte',
-    descricao: 'Passagens de ônibus',
-    data: '2024-10-20',
-    categoria: 'Transporte',
-    valor: 150,
-  },
-  {
-    id: 7,
-    nome: 'Restaurante',
-    descricao: 'Jantar com amigos',
-    data: '2024-10-18',
-    categoria: 'Lazer',
-    valor: 180,
-  },
-  {
-    id: 8,
-    nome: 'Farmácia',
-    descricao: 'Medicamentos',
-    data: '2024-10-12',
-    categoria: 'Saúde',
-    valor: 80,
-  },
-  {
-    id: 9,
-    nome: 'Streaming',
-    descricao: 'Assinatura de serviço de streaming',
-    data: '2024-10-05',
-    categoria: 'Lazer',
-    valor: 40,
-  },
-  {
-    id: 10,
-    nome: 'Roupas',
-    descricao: 'Compra de roupas novas',
-    data: '2024-10-22',
-    categoria: 'Vestuário',
-    valor: 250,
-  },
-  {
-    id: 11,
-    nome: 'Manutenção do carro',
-    descricao: 'Revisão e troca de óleo',
-    data: '2024-10-25',
-    categoria: 'Transporte',
-    valor: 300,
-  },
-  {
-    id: 12,
-    nome: 'Presente',
-    descricao: 'Aniversário de um familiar',
-    data: '2024-10-28',
-    categoria: 'Outros',
-    valor: 100,
-  },
-  {
-    id: 13,
-    nome: 'Curso online',
-    descricao: 'Curso de aperfeiçoamento profissional',
-    data: '2024-10-03',
-    categoria: 'Educação',
-    valor: 200,
-  },
-  {
-    id: 14,
-    nome: 'Material de escritório',
-    descricao: 'Compra de material para home office',
-    data: '2024-10-08',
-    categoria: 'Trabalho',
-    valor: 70,
-  },
-]
-
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(false)
 
@@ -179,12 +63,14 @@ const useIsMobile = () => {
 
 export function Expense({ expense }: ChildComponentProps) {
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
-  const [categoria, setCategoria] = useState('Todas')
+  const [selectedCategory, setSelectedCategory] = useState('Todas')
   const [despesasFiltradas, setDespesasFiltradas] = useState(expense)
   const [category, setCatExpense] = useState<CatProps[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const categorias = ['Todas', ...category.map(c => c.category)]
+
+  // console.log(expense)
 
   useEffect(() => {
     async function fetchCatExpense() {
@@ -209,11 +95,12 @@ export function Expense({ expense }: ChildComponentProps) {
       return (
         despesaDate.getMonth() === date.getMonth() &&
         despesaDate.getFullYear() === date.getFullYear() &&
-        (categoria === 'Todas' || despesa.cat_expense.category === categoria)
+        (selectedCategory === 'Todas' ||
+          despesa.cat_expense.category === selectedCategory)
       )
     })
     setDespesasFiltradas(filteredDespesas)
-  }, [date, categoria, expense])
+  }, [date, selectedCategory, expense])
 
   const handlePreviousMonth = () => {
     setDate(prevDate => startOfMonth(subMonths(prevDate, 1)))
@@ -245,9 +132,9 @@ export function Expense({ expense }: ChildComponentProps) {
           </Button>
         </div>
 
-        <Select value={categoria} onValueChange={setCategoria}>
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Filtrar por categoria" />
+            <SelectValue placeholder="Filtrar por selectedCategory" />
           </SelectTrigger>
           <SelectContent>
             {categorias.map(cat => (

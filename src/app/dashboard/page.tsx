@@ -46,6 +46,11 @@ export default function DashboardPage() {
   const [expense, setExpense] = useState<expenseProps[]>([])
   const [revenueError, setError] = useState('')
 
+  const a = localStorage.getItem('user')
+  const user = a ? JSON.parse(a) : null
+  console.log(user.id)
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     async function fetchRevenue() {
       const now = new Date()
@@ -57,12 +62,16 @@ export default function DashboardPage() {
 
       try {
         const [revenueData, expenseData] = await Promise.all([
-          supabase.from('revenue').select('*, cat_revenue (id, category)'),
+          supabase
+            .from('revenue')
+            .select('*, cat_revenue (id, category)')
+            .eq('user_id', user.id),
           // .gte('created_at', startOfMonth)
           // .lte('created_at', endOfMonth),
           supabase
             .from('expense')
-            .select('*, cat_expense (id, category)'),
+            .select('*, cat_expense (id, category)')
+            .eq('user_id', user.id),
           // .gte('created_at', startOfMonth)
           // .lte('created_at', endOfMonth),
         ])

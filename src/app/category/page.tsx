@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/ui/header'
-import { supabase } from '@/util/supabase/server'
+import { supabase } from '@/util/supabase/supabase'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Category() {

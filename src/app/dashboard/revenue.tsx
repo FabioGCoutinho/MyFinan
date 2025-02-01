@@ -64,7 +64,7 @@ const useIsMobile = () => {
 export function Revenue({ revenue }: ChildComponentProps) {
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
   const [categoria, setCategoria] = useState('Todas')
-  const [despesasFiltradas, setDespesasFiltradas] = useState(revenue)
+  const [receitasFiltradas, setReceitasFiltradas] = useState(revenue)
   const [category, setCatRevenue] = useState<CatProps[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -97,7 +97,7 @@ export function Revenue({ revenue }: ChildComponentProps) {
         (categoria === 'Todas' || despesa.cat_revenue.category === categoria)
       )
     })
-    setDespesasFiltradas(filteredDespesas)
+    setReceitasFiltradas(filteredDespesas)
   }, [date, categoria])
 
   const handlePreviousMonth = () => {
@@ -110,7 +110,7 @@ export function Revenue({ revenue }: ChildComponentProps) {
 
   return (
     <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-6">Despesas</h1>
+      <h1 className="text-3xl font-bold mb-6">Receitas</h1>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
         <div className="flex items-center space-x-2">
@@ -155,7 +155,7 @@ export function Revenue({ revenue }: ChildComponentProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {despesasFiltradas.map(despesa => (
+            {receitasFiltradas.map(despesa => (
               <TableRow key={despesa.id}>
                 <TableCell className="font-medium">
                   <div className="flex flex-col sm:flex-row sm:items-center">
@@ -192,7 +192,7 @@ export function Revenue({ revenue }: ChildComponentProps) {
             <TableRow>
               <TableCell colSpan={3}>Total</TableCell>
               <TableCell className="text-right font-bold">
-                {despesasFiltradas
+                {receitasFiltradas
                   .reduce((total, despesa) => total + despesa.value, 0)
                   .toLocaleString('pt-BR', {
                     style: 'currency',

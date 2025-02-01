@@ -6,9 +6,8 @@ import { Input } from '@/components/ui/input'
 import Google from '@/app/assets/google.svg'
 import Facebook from '@/app/assets/facebook.svg'
 import Image from 'next/image'
-// import { supabase } from '@/util/supabase/supabase'
-import { login, signup } from '@/components/actions'
-import { supabase } from '@/util/supabase/supabase'
+import PulseLoader from 'react-spinners/PulseLoader'
+import { login } from '@/components/actions'
 
 interface LoginFormProps {
   onRecuperarSenha: () => void
@@ -21,21 +20,12 @@ export default function LoginForm({
 }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isDisabled, setIsDisabled] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    // Lógica de login aqui
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+  function handleSubmit() {
+    setIsDisabled(true)
 
-    if (error) {
-      console.error('Login falhou', { error })
-      return
-    }
-
-    console.log('Login enviado', { data })
+    login({ email, password })
   }
 
   return (
@@ -63,10 +53,11 @@ export default function LoginForm({
           />
         </div>
         <Button
-          formAction={() => login({ email, password })}
-          className="w-full bg-blue-600 hover:bg-blue-700"
+          formAction={handleSubmit}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base"
+          disabled={isDisabled}
         >
-          Entrar
+          {isDisabled ? <PulseLoader color="#fff" /> : 'Entrar'}
         </Button>
       </form>
       <div className="mt-4 flex flex-col space-y-2">
@@ -80,7 +71,7 @@ export default function LoginForm({
             width={20}
             alt="Icone do Google"
             className="mr-2"
-          />{' '}
+          />
           Entrar com Google
         </Button>
         <Button
@@ -93,7 +84,7 @@ export default function LoginForm({
             width={20}
             alt="Icone do Facebook"
             className="mr-2"
-          />{' '}
+          />
           Entrar com Facebook
         </Button>
       </div>
