@@ -27,12 +27,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import type { User } from '@supabase/supabase-js'
 
-interface CatExpense {
-  id: number
-  category: string
-  created_at: string
-}
-
 export default function Despesas() {
   const [expense, setExpense] = useState('')
   const [valor, setValor] = useState('')
@@ -40,30 +34,12 @@ export default function Despesas() {
   const [category, setCategory] = useState('')
   const [date, setDate] = useState('')
   const [obs, setObs] = useState('')
-  const [catExpense, setCatExpense] = useState<CatExpense[]>()
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
 
+  //obtem os dados do usuario salvo no localStorage
   const a = localStorage.getItem('user')
   const user = a ? JSON.parse(a) : null
-
-  useEffect(() => {
-    async function fetchCatExpense() {
-      try {
-        const { data, error } = await supabase
-          .from('cat_expense')
-          .select('*')
-          .eq('user_id', user.id)
-        if (error) throw error
-        setCatExpense(data)
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      } catch (error: any) {
-        setError(error?.message)
-      }
-    }
-
-    fetchCatExpense()
-  }, [])
 
   const formatarValor = (value: string) => {
     // Remove todos os caracteres não numéricos
@@ -174,11 +150,18 @@ export default function Despesas() {
                   </SelectTrigger>
 
                   <SelectContent>
-                    {catExpense?.map(item => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {item.category}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="Moradia">Moradia</SelectItem>
+                    <SelectItem value="Alimentação">Alimentação</SelectItem>
+                    <SelectItem value="Transporte">Transporte</SelectItem>
+                    <SelectItem value="Saúde">Saúde</SelectItem>
+                    <SelectItem value="Educação">Educação</SelectItem>
+                    <SelectItem value="Lazer">Lazer</SelectItem>
+                    <SelectItem value="Vestuário">Vestuário</SelectItem>
+                    <SelectItem value="Contas">Contas</SelectItem>
+                    <SelectItem value="Impostos">Impostos</SelectItem>
+                    <SelectItem value="Dívidas">Dívidas</SelectItem>
+                    <SelectItem value="Doações">Doações</SelectItem>
+                    <SelectItem value="Outros">Outros</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -193,7 +176,7 @@ export default function Despesas() {
               </div>
               <Button
                 type="submit"
-                className="w-full text-white hover:bg-purple-900 hover:text-black hover:font-medium"
+                className="w-full text-white hover:bg-purple-900"
               >
                 Cadastrar Despesa
               </Button>
@@ -205,11 +188,13 @@ export default function Despesas() {
             <AlertDialogHeader>
               <AlertDialogTitle>Sucesso!</AlertDialogTitle>
               <AlertDialogDescription>
-                A receita {expense} foi cadastrada!
+                A despesa {expense} foi cadastrada!
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogAction>Continue</AlertDialogAction>
+              <AlertDialogAction className="w-full text-white hover:bg-purple-900">
+                Continue
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

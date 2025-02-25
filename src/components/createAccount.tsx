@@ -10,9 +10,9 @@ interface CriarContaProps {
 }
 
 export default function CriarConta({ onVoltar }: CriarContaProps) {
-  const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const [confirmarSenha, setConfirmarSenha] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,21 +29,11 @@ export default function CriarConta({ onVoltar }: CriarContaProps) {
   }
 
   return (
-    <div className="w-full max-w-md p-8 bg-gray-800 rounded-lg shadow-md">
+    <div className="w-full max-w-md p-8 rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6 text-center text-white">
         Criar Conta
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Input
-            type="text"
-            placeholder="Nome completo"
-            value={nome}
-            onChange={e => setNome(e.target.value)}
-            required
-            className="bg-gray-700 text-white placeholder-gray-400"
-          />
-        </div>
         <div>
           <Input
             type="email"
@@ -64,6 +54,21 @@ export default function CriarConta({ onVoltar }: CriarContaProps) {
             className="bg-gray-700 text-white placeholder-gray-400"
           />
         </div>
+        <div>
+          <Input
+            type="password"
+            placeholder="Confirmar Senha"
+            value={confirmarSenha}
+            onChange={e => setConfirmarSenha(e.target.value)}
+            required
+            className="bg-gray-700 text-white placeholder-gray-400"
+          />
+        </div>
+        {confirmarSenha !== senha ? (
+          <span className="text-red-500 text-xs">As senhas não são iguais</span>
+        ) : (
+          ''
+        )}
         <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
           Criar conta
         </Button>

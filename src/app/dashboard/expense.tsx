@@ -27,7 +27,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { supabase } from '@/util/supabase/supabase'
 
 interface ChildComponentProps {
   expense: {
@@ -38,21 +37,14 @@ interface ChildComponentProps {
     expense: string
     updated_at: Date
     value: number
-    cat_expense: CatProps
   }[]
-}
-
-interface CatProps {
-  id: number
-  category: string
-  created_at: Date
 }
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    const checkIsMobile = () => setIsMobile(window.innerWidth < 768)
+    const checkIsMobile = () => setIsMobile(window.innerWidth < 640)
     checkIsMobile()
     window.addEventListener('resize', checkIsMobile)
     return () => window.removeEventListener('resize', checkIsMobile)
@@ -65,27 +57,8 @@ export function Expense({ expense }: ChildComponentProps) {
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
   const [selectedCategory, setSelectedCategory] = useState('Todas')
   const [despesasFiltradas, setDespesasFiltradas] = useState(expense)
-  const [category, setCatExpense] = useState<CatProps[]>([])
-  const [error, setError] = useState<string | null>(null)
-
-  const categorias = ['Todas', ...category.map(c => c.category)]
 
   // console.log(expense)
-
-  useEffect(() => {
-    async function fetchCatExpense() {
-      try {
-        const { data, error } = await supabase.from('cat_expense').select('*')
-        if (error) throw error
-        setCatExpense(data)
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      } catch (error: any) {
-        setError(error?.message)
-      }
-    }
-
-    fetchCatExpense()
-  }, [])
 
   const isMobile = useIsMobile()
 
@@ -95,8 +68,7 @@ export function Expense({ expense }: ChildComponentProps) {
       return (
         despesaDate.getMonth() === date.getMonth() &&
         despesaDate.getFullYear() === date.getFullYear() &&
-        (selectedCategory === 'Todas' ||
-          despesa.cat_expense.category === selectedCategory)
+        (selectedCategory === 'Todas' || despesa.category === selectedCategory)
       )
     })
     setDespesasFiltradas(filteredDespesas)
@@ -137,11 +109,19 @@ export function Expense({ expense }: ChildComponentProps) {
             <SelectValue placeholder="Filtrar por selectedCategory" />
           </SelectTrigger>
           <SelectContent>
-            {categorias.map(cat => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
+            <SelectItem value="Todas">Todas</SelectItem>
+            <SelectItem value="Moradia">Moradia</SelectItem>
+            <SelectItem value="Alimentação">Alimentação</SelectItem>
+            <SelectItem value="Transporte">Transporte</SelectItem>
+            <SelectItem value="Saúde">Saúde</SelectItem>
+            <SelectItem value="Educação">Educação</SelectItem>
+            <SelectItem value="Lazer">Lazer</SelectItem>
+            <SelectItem value="Vestuário">Vestuário</SelectItem>
+            <SelectItem value="Contas">Contas</SelectItem>
+            <SelectItem value="Impostos">Impostos</SelectItem>
+            <SelectItem value="Dívidas">Dívidas</SelectItem>
+            <SelectItem value="Doações">Doações</SelectItem>
+            <SelectItem value="Outros">Outros</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -150,7 +130,7 @@ export function Expense({ expense }: ChildComponentProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
+              <TableHead colSpan={isMobile ? 2 : 0}>Nome</TableHead>
               <TableHead className="hidden sm:table-cell">Data</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead className="text-right">Valor</TableHead>
@@ -159,7 +139,7 @@ export function Expense({ expense }: ChildComponentProps) {
           <TableBody>
             {despesasFiltradas.map(despesa => (
               <TableRow key={despesa.id}>
-                <TableCell className="font-medium">
+                <TableCell colSpan={isMobile ? 2 : 0} className="font-medium">
                   <div className="flex flex-col sm:flex-row sm:items-center">
                     <TooltipProvider>
                       <Tooltip delayDuration={isMobile ? 1000 : 0}>
@@ -180,7 +160,7 @@ export function Expense({ expense }: ChildComponentProps) {
                 <TableCell className="hidden sm:table-cell">
                   {format(parseISO(despesa.created_at), 'dd/MM/yyyy')}
                 </TableCell>
-                <TableCell>{despesa.cat_expense.category}</TableCell>
+                <TableCell>{despesa.category}</TableCell>
                 <TableCell className="text-right">
                   {despesa.value.toLocaleString('pt-BR', {
                     style: 'currency',

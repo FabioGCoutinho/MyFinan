@@ -21,7 +21,7 @@ export function Header() {
   }, [setTheme])
 
   return (
-    <header className="flex h-14 lg:h-[60px] items-center gap-4 border-b bg-background px-6">
+    <header className="flex w-full h-14 lg:h-[60px] items-center gap-4 border-b bg-background px-6">
       <DropdownMenu>
         <DropdownMenuTrigger asChild className="lg:hidden">
           <Button variant="ghost" size="icon">
@@ -31,13 +31,13 @@ export function Header() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[200px]">
           <DropdownMenuItem>
-            <Link href="#">Visão Geral</Link>
+            <Link href="/dashboard">Visão Geral</Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
-            <Link href="#">Adicionar Despesas</Link>
+            <Link href="/despesas">Adicionar Despesas</Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
-            <Link href="#">Adicionar Receitas</Link>
+            <Link href="/receita">Adicionar Receitas</Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
             <Link href="#">Configurações</Link>
@@ -105,7 +105,12 @@ export function Header() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button onClick={() => signOut()}>Sair</Button>
+        <Button
+          className="text-white hover:bg-purple-900"
+          onClick={() => signOut()}
+        >
+          Sair
+        </Button>
       </div>
     </header>
   )

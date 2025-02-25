@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,50 +15,29 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/ui/header'
 import { supabase } from '@/util/supabase/supabase'
-import { toast } from '@/hooks/use-toast'
 import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogTitle,
-  AlertDialogTrigger,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
 } from '@/components/ui/alert-dialog'
 
-interface CatRevenueProps {
-  id: number
-  category: string
-  created_at: string
-}
-
-export default function Despesas() {
+export default function Receitas() {
   const [revenue, setRevenue] = useState('')
   const [valor, setValor] = useState('')
   const [value, setValue] = useState(0)
   const [category, setCategory] = useState('')
   const [date, setDate] = useState('')
   const [obs, setObs] = useState('')
-  const [catRevenue, setCatRevenue] = useState<CatRevenueProps[]>()
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
 
-  useEffect(() => {
-    async function fetchCatExpense() {
-      try {
-        const { data, error } = await supabase.from('cat_revenue').select('*')
-        if (error) throw error
-        setCatRevenue(data)
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      } catch (error: any) {
-        setError(error?.message)
-      }
-    }
-
-    fetchCatExpense()
-  }, [])
+  //obtem os dados do usuario salvos no localStorage
+  const a = localStorage.getItem('user')
+  const user = a ? JSON.parse(a) : null
 
   const formatarValor = (value: string) => {
     // Remove todos os caracteres não numéricos
@@ -93,6 +71,7 @@ export default function Despesas() {
         created_at: date,
         category,
         obs,
+        user_id: user?.id,
       })
 
       if (error) throw error
@@ -167,11 +146,12 @@ export default function Despesas() {
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {catRevenue?.map(item => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {item.category}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="Salário">Salário</SelectItem>
+                    <SelectItem value="Rendimentos">Rendimentos</SelectItem>
+                    <SelectItem value="Freelance">Freelance</SelectItem>
+                    <SelectItem value="Bônus">Bônus</SelectItem>
+                    <SelectItem value="Vendas">Vendas</SelectItem>
+                    <SelectItem value="Outros">Outros</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -186,9 +166,9 @@ export default function Despesas() {
               </div>
               <Button
                 type="submit"
-                className="w-full text-white hover:bg-purple-900 hover:text-black hover:font-medium"
+                className="w-full text-white hover:bg-purple-900"
               >
-                Cadastrar Despesa
+                Cadastrar Receita
               </Button>
             </form>
           </CardContent>
@@ -202,7 +182,9 @@ export default function Despesas() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogAction>Continue</AlertDialogAction>
+              <AlertDialogAction className="w-full text-white hover:bg-purple-900">
+                Continue
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
