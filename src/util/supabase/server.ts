@@ -6,7 +6,7 @@ export async function createClient() {
 
   return createServerClient(
     'https://kzlifujmpgnasvchfpzh.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6bGlmdWptcGduYXN2Y2hmcHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjgyMzY0MjAsImV4cCI6MjA0MzgxMjQyMH0.wUzeee7YjhLVRRXdDTwg67Gpi59SmkAfRukbGrae8DU'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6bGlmdWptcGduYXN2Y2hmcHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjgyMzY0MjAsImV4cCI6MjA0MzgxMjQyMH0.wUzeee7YjhLVRRXdDTwg67Gpi59SmkAfRukbGrae8DU',
     {
       cookies: {
         getAll() {
