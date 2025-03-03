@@ -15,7 +15,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/ui/header'
 import { supabase } from '@/util/supabase/supabase'
-import { toast } from '@/hooks/use-toast'
 import { AlertDialog } from '@radix-ui/react-alert-dialog'
 import {
   AlertDialogAction,
@@ -36,10 +35,14 @@ export default function Despesas() {
   const [obs, setObs] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
 
-  //obtem os dados do usuario salvo no localStorage
-  const a = localStorage.getItem('user')
-  const user = a ? JSON.parse(a) : null
+  useEffect(() => {
+    //obtem os dados do usuario salvo no localStorage
+    const a = localStorage.getItem('user')
+    const user = a ? JSON.parse(a) : null
+    setUser(user)
+  }, [])
 
   const formatarValor = (value: string) => {
     // Remove todos os caracteres não numéricos

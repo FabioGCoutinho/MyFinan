@@ -3,7 +3,11 @@ import type { User } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { useEffect } from 'react'
 
-export const SaveUserInfoClientComponent = ({ user }) => {
+interface SaveUserProps {
+  user: User
+}
+
+export const SaveUserInfoClientComponent = ({ user }: SaveUserProps) => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('user', JSON.stringify(user))

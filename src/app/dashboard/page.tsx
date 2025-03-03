@@ -1,9 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Header } from '@/components/ui/header'
 import { supabase } from '@/util/supabase/supabase'
@@ -37,11 +35,10 @@ export default function DashboardPage() {
   const [expense, setExpense] = useState<expenseProps[]>([])
   const [revenueError, setError] = useState('')
 
-  const a = localStorage.getItem('user')
-  const user = a ? JSON.parse(a) : null
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
+    const a = localStorage.getItem('user')
+    const user = a ? JSON.parse(a) : null
+
     async function fetchRevenue() {
       const now = new Date()
       const year = now.getFullYear()

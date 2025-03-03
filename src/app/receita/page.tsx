@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,6 +24,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
 } from '@/components/ui/alert-dialog'
+import type { User } from '@supabase/supabase-js'
 
 export default function Receitas() {
   const [revenue, setRevenue] = useState('')
@@ -34,10 +35,14 @@ export default function Receitas() {
   const [obs, setObs] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
 
-  //obtem os dados do usuario salvos no localStorage
-  const a = localStorage.getItem('user')
-  const user = a ? JSON.parse(a) : null
+  useEffect(() => {
+    //obtem os dados do usuario salvos no localStorage
+    const a = localStorage.getItem('user')
+    const user = a ? JSON.parse(a) : null
+    setUser(user)
+  }, [])
 
   const formatarValor = (value: string) => {
     // Remove todos os caracteres não numéricos
