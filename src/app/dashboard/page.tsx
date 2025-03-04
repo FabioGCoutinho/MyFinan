@@ -34,7 +34,9 @@ export default function DashboardPage() {
   const [revenue, setRevenue] = useState<revenueProps[]>([])
   const [expense, setExpense] = useState<expenseProps[]>([])
   const [revenueError, setError] = useState('')
+  const [reloadData, setReloadData] = useState(false)
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     const a = localStorage.getItem('user')
     const user = a ? JSON.parse(a) : null
@@ -75,7 +77,7 @@ export default function DashboardPage() {
     }
 
     fetchRevenue()
-  }, [])
+  }, [reloadData])
 
   return (
     <div className="flex flex-col items-center min-h-dvh">
@@ -95,10 +97,16 @@ export default function DashboardPage() {
             <Overview revenue={revenue} expense={expense} />
           </TabsContent>
           <TabsContent value="expense" className="space-y-4">
-            <Expense expense={expense} />
+            <Expense
+              expense={expense}
+              onActionCompleted={() => setReloadData(!reloadData)}
+            />
           </TabsContent>
           <TabsContent value="revenue" className="space-y-4">
-            <Revenue revenue={revenue} />
+            <Revenue
+              revenue={revenue}
+              onActionCompleted={() => setReloadData(!reloadData)}
+            />
           </TabsContent>
           <TabsContent value="relatorio" className="space-y-4">
             <Relatorio revenue={revenue} expense={expense} />

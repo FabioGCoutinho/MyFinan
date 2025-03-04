@@ -16,8 +16,8 @@ COPY . .
 # Construa a aplicação Next.js
 RUN npm run build
 
-# Expone a porta 3000
-EXPOSE 3000
+# Expone a porta 80
+EXPOSE 80
 
 # Comando para rodar a aplicação
 CMD ["npm", "start"]

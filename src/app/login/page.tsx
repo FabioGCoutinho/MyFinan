@@ -9,8 +9,6 @@ import WelcomeMessage from '@/components/welcomeMessage'
 
 type FormType = 'login' | 'recuperarSenha' | 'criarConta'
 
-import background from './background.jpg'
-
 export default function LoginPage() {
   const [currentForm, setCurrentForm] = useState<FormType>('login')
 
