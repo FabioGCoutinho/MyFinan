@@ -7,7 +7,7 @@ import Google from '@/app/assets/google.svg'
 import Facebook from '@/app/assets/facebook.svg'
 import Image from 'next/image'
 import PulseLoader from 'react-spinners/PulseLoader'
-import { login } from '@/components/actions'
+import { login, loginWithGoogle } from '@/components/actions'
 
 interface LoginFormProps {
   onRecuperarSenha: () => void
@@ -64,7 +64,7 @@ export default function LoginForm({
         <Button
           variant="outline"
           className="w-full text-white border-gray-600 hover:bg-gray-700"
-          onClick={() => console.log('Login do Google')}
+          onClick={() => loginWithGoogle()}
         >
           <Image
             src={Google}

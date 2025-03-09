@@ -38,8 +38,16 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const token = request.cookies.get('sb-kzlifujmpgnasvchfpzh-auth-token')
+  const token0 = request.cookies.get('sb-kzlifujmpgnasvchfpzh-auth-token.0')
 
   if (token !== undefined && request.nextUrl.pathname === '/login') {
+    // User is logged in and is on the '/' route, redirect to '/dashboard'
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  if (token0 !== undefined && request.nextUrl.pathname === '/login') {
     // User is logged in and is on the '/' route, redirect to '/dashboard'
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'

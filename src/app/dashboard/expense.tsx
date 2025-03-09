@@ -253,7 +253,7 @@ export function Expense({ expense, onActionCompleted }: ChildComponentProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir</AlertDialogTitle>
             <AlertDialogDescription>
-              Confirmar a exclusão da receita? ID: {selectedId}
+              Confirmar a exclusão da despesa?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

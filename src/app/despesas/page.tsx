@@ -25,6 +25,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import type { User } from '@supabase/supabase-js'
+import { addMonths } from 'date-fns'
+import PulseLoader from 'react-spinners/PulseLoader'
 
 export default function Despesas() {
   const [expense, setExpense] = useState('')
@@ -36,6 +38,8 @@ export default function Despesas() {
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
   const [user, setUser] = useState<User | null>(null)
+  const [qtd_parcelas, setQtdParcelas] = useState<number>(1)
+  const [isDisabled, setIsDisabled] = useState(false)
 
   useEffect(() => {
     //obtem os dados do usuario salvo no localStorage
@@ -68,7 +72,36 @@ export default function Despesas() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Aqui você pode adicionar a lógica para enviar os dados do formulário
+    setIsDisabled(true)
+
+    // Se for compras parceladas, executa o for para fazer na quantidade de meses referente a qtd de parcelas
+    if (category === 'Compras parceladas') {
+      let currentDate = new Date(date) // Cria uma cópia da data original
+
+      for (let i = 1; i <= qtd_parcelas; i++) {
+        try {
+          const { data, error } = await supabase.from('expense').insert({
+            expense: `${expense} - Parcela ${i}/${qtd_parcelas}`,
+            value: value / qtd_parcelas,
+            created_at: currentDate.toISOString(), // Usa a data atual
+            category,
+            obs,
+            user_id: user?.id,
+          })
+
+          if (error) throw error
+
+          // Adiciona 1 mês à data para a próxima parcela
+          currentDate = addMonths(currentDate, 1)
+          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        } catch (error: any) {
+          setError(error?.message)
+        }
+      }
+      setAlertShow(true)
+      return
+    }
+
     try {
       const { data, error } = await supabase.from('expense').insert({
         expense,
@@ -97,6 +130,7 @@ export default function Despesas() {
     setDate('')
     setObs('')
     setAlertShow(false)
+    setIsDisabled(false)
   }
 
   return (
@@ -112,7 +146,7 @@ export default function Despesas() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="despesa">Despesa</Label>
+                <Label htmlFor="expense">Despesa</Label>
                 <Input
                   id="expense"
                   placeholder="Nome da despesa"
@@ -122,7 +156,7 @@ export default function Despesas() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="valor">Valor</Label>
+                <Label htmlFor="price">Valor</Label>
                 <Input
                   id="price"
                   placeholder="R$ 0,00"
@@ -132,7 +166,7 @@ export default function Despesas() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="data">Data</Label>
+                <Label htmlFor="date">Data</Label>
                 <Input
                   id="date"
                   type="date"
@@ -153,25 +187,55 @@ export default function Despesas() {
                   </SelectTrigger>
 
                   <SelectContent>
-                    <SelectItem value="Moradia">Moradia</SelectItem>
                     <SelectItem value="Alimentação">Alimentação</SelectItem>
-                    <SelectItem value="Transporte">Transporte</SelectItem>
-                    <SelectItem value="Saúde">Saúde</SelectItem>
-                    <SelectItem value="Educação">Educação</SelectItem>
-                    <SelectItem value="Lazer">Lazer</SelectItem>
-                    <SelectItem value="Vestuário">Vestuário</SelectItem>
                     <SelectItem value="Contas">Contas</SelectItem>
-                    <SelectItem value="Impostos">Impostos</SelectItem>
+                    <SelectItem value="Compras parceladas">
+                      Compras parceladas
+                    </SelectItem>
                     <SelectItem value="Dívidas">Dívidas</SelectItem>
                     <SelectItem value="Doações">Doações</SelectItem>
+                    <SelectItem value="Educação">Educação</SelectItem>
+                    <SelectItem value="Impostos">Impostos</SelectItem>
+                    <SelectItem value="Lazer">Lazer</SelectItem>
+                    <SelectItem value="Moradia">Moradia</SelectItem>
+                    <SelectItem value="Saúde">Saúde</SelectItem>
+                    <SelectItem value="Transporte">Transporte</SelectItem>
+                    <SelectItem value="Vestuário">Vestuário</SelectItem>
                     <SelectItem value="Outros">Outros</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              <div
+                className={`space-y-2 ${category === 'Compras parceladas' ? '' : 'hidden'}`}
+              >
+                <Label htmlFor="qtd_parcelas">Quantidade de Parcelas</Label>
+                <Input
+                  id="qtd_parcelas"
+                  type="number"
+                  value={qtd_parcelas}
+                  onChange={e => setQtdParcelas(Number(e.target.value))}
+                  required
+                />
+              </div>
+              <div
+                className={`space-y-2 ${category === 'Compras parceladas' ? '' : 'hidden'}`}
+              >
+                <Label htmlFor="valor_parcelas">Valor da Parcela</Label>
+                <Input
+                  id="valor_parcelas"
+                  value={(value / qtd_parcelas).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                  disabled
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="obs">Observação</Label>
                 <Textarea
-                  id="observacao"
+                  id="obs"
                   placeholder="Adicione uma observação (opcional)"
                   value={obs}
                   onChange={e => setObs(e.target.value)}
@@ -180,8 +244,13 @@ export default function Despesas() {
               <Button
                 type="submit"
                 className="w-full text-white hover:bg-purple-900"
+                disabled={isDisabled}
               >
-                Cadastrar Despesa
+                {isDisabled ? (
+                  <PulseLoader color="#fff" />
+                ) : (
+                  'Cadastrar Despesa'
+                )}
               </Button>
             </form>
           </CardContent>

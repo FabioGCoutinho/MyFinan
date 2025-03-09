@@ -30,6 +30,21 @@ export async function login({ email, password }: loginProps) {
   redirect('/auth/session')
 }
 
+export async function loginWithGoogle() {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'http://localhost:3000/auth/callback',
+    },
+  })
+
+  if (data.url) {
+    redirect(data.url) // use the redirect API for your server framework
+  }
+}
+
 export async function signup({ email, password }: loginProps) {
   const supabase = await createClient()
 

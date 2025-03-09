@@ -247,7 +247,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir</AlertDialogTitle>
             <AlertDialogDescription>
-              Confirmar a exclusão da receita? ID: {selectedId}
+              Confirmar a exclusão da receita?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
