@@ -30,15 +30,13 @@ export async function login({ email, password }: loginProps) {
   redirect('/auth/session')
 }
 
-export async function loginWithGoogle(request: Request) {
+export async function loginWithGoogle() {
   const supabase = await createClient()
-
-  const forwardedHost = request.headers.get('x-forwarded-host')
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `https://${forwardedHost}/auth/callback`,
+      redirectTo: 'https://app.myfinan.com.br/auth/callback',
     },
   })
 
