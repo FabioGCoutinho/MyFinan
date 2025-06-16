@@ -123,7 +123,8 @@ export function Expense({ expense, onActionCompleted }: ChildComponentProps) {
         .delete()
         .eq('id', selectedId)
 
-      console.log(response)
+      // console.log(response)
+
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     } catch (error: any) {
       setError(error?.message)
