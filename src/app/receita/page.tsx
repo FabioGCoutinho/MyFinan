@@ -1,7 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Header } from '@/components/ui/header'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -12,19 +22,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
-import { Header } from '@/components/ui/header'
 import { supabase } from '@/util/supabase/supabase'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogTitle,
-  AlertDialogAction,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-} from '@/components/ui/alert-dialog'
 import type { User } from '@supabase/supabase-js'
+import { useEffect, useState } from 'react'
 
 export default function Receitas() {
   const [revenue, setRevenue] = useState('')
@@ -171,7 +171,7 @@ export default function Receitas() {
               </div>
               <Button
                 type="submit"
-                className="w-full text-white hover:bg-purple-900"
+                className="w-full bg-button text-button-foreground hover:bg-purple-900"
               >
                 Cadastrar Receita
               </Button>

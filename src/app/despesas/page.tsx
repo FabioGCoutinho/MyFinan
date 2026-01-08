@@ -1,7 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import {
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Header } from '@/components/ui/header'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -12,20 +21,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
-import { Header } from '@/components/ui/header'
 import { supabase } from '@/util/supabase/supabase'
 import { AlertDialog } from '@radix-ui/react-alert-dialog'
-import {
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import type { User } from '@supabase/supabase-js'
 import { addMonths } from 'date-fns'
+import { useEffect, useState } from 'react'
 import PulseLoader from 'react-spinners/PulseLoader'
 
 export default function Despesas() {
@@ -243,7 +243,7 @@ export default function Despesas() {
               </div>
               <Button
                 type="submit"
-                className="w-full text-white hover:bg-purple-900"
+                className="w-full bg-button text-button-foreground hover:bg-purple-900"
                 disabled={isDisabled}
               >
                 {isDisabled ? (

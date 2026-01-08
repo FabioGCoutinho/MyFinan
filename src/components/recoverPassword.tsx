@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useState } from 'react'
 
 interface RecuperarSenhaProps {
   onVoltar: () => void
@@ -33,7 +33,10 @@ export default function RecuperarSenha({ onVoltar }: RecuperarSenhaProps) {
             className="bg-gray-700 text-white placeholder-gray-400"
           />
         </div>
-        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+        <Button
+          type="submit"
+          className="w-full bg-button text-button-foreground hover:bg-purple-900"
+        >
           Enviar link de recuperação
         </Button>
       </form>

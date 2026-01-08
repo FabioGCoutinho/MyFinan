@@ -50,6 +50,10 @@ const config: Config = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        button: {
+          DEFAULT: 'oklch(0.496 0.265 301.924)', // purple-500 do Tailwind
+          foreground: '#fff',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

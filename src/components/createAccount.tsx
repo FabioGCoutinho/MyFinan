@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/util/supabase/supabase'
+import { redirect } from 'next/navigation'
+import { useState } from 'react'
 
 interface CriarContaProps {
   onVoltar: () => void
@@ -13,17 +14,24 @@ export default function CriarConta({ onVoltar }: CriarContaProps) {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
+  const [isDisabled, setIsDisabled] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsDisabled(true)
+
     // Lógica de criação de conta aqui
     const { data, error } = await supabase.auth.signUp({
       email: email,
       password: senha,
       options: {
-        emailRedirectTo: 'http://localhost:3000/dashboard',
+        emailRedirectTo: 'https://app.myfinan.com.br/dashboard',
       },
     })
+
+    if (error) {
+      redirect('/error')
+    }
 
     console.log('Conta criada', { data })
   }
@@ -69,7 +77,11 @@ export default function CriarConta({ onVoltar }: CriarContaProps) {
         ) : (
           ''
         )}
-        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+        <Button
+          type="submit"
+          className="w-full bg-button text-button-foreground hover:bg-purple-900"
+          disabled={isDisabled}
+        >
           Criar conta
         </Button>
       </form>

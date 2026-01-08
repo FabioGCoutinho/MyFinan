@@ -1,17 +1,17 @@
 'use client'
 
+import { signOut } from '@/components/actions'
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Menu, Bell, Sun, Moon } from 'lucide-react'
-import Link from 'next/link'
-import { Button } from './button'
+import { Bell, Menu, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import Link from 'next/link'
 import { useEffect } from 'react'
-import { signOut } from '@/components/actions'
+import { Button } from './button'
 export function Header() {
   const { setTheme, theme } = useTheme()
 
@@ -106,7 +106,7 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
-          className="text-white hover:bg-purple-900"
+          className="bg-button text-button-foreground hover:bg-purple-900"
           onClick={() => signOut()}
         >
           Sair

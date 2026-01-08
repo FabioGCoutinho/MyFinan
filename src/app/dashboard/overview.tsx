@@ -1,4 +1,6 @@
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+'use client'
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { format, parseISO, startOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { DollarSign, Users } from 'lucide-react'

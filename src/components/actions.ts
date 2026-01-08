@@ -27,7 +27,7 @@ export async function login({ email, password }: loginProps) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/auth/session')
+  redirect('/dashboard')
 }
 
 export async function loginWithGoogle() {
@@ -93,4 +93,8 @@ export async function signOut() {
   // Revalidar o caminho e redirecionar o usuário
   revalidatePath('/', 'layout')
   redirect('/')
+}
+
+export async function revalidateDashboard() {
+  revalidatePath('/dashboard', 'page')
 }
