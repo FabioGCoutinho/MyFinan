@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { addMonths, format, subMonths, startOfMonth, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import {
-  CalendarIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  Trash2,
-} from 'lucide-react'
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -21,10 +22,10 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
-  TableFooter,
 } from '@/components/ui/table'
 import {
   Tooltip,
@@ -32,17 +33,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { createClient } from '@/util/supabase/client'
+import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { supabase } from '@/util/supabase/supabase'
+  CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Trash2,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 
 interface ChildComponentProps {
   expense: {
@@ -71,6 +71,7 @@ const useIsMobile = () => {
 }
 
 export function Expense({ expense, onActionCompleted }: ChildComponentProps) {
+  const supabase = useMemo(() => createClient(), [])
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
   const [selectedCategory, setSelectedCategory] = useState('Todas')
   const [despesasFiltradas, setDespesasFiltradas] = useState(expense)
@@ -164,17 +165,17 @@ export function Expense({ expense, onActionCompleted }: ChildComponentProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="Todas">Todas</SelectItem>
-            <SelectItem value="Moradia">Moradia</SelectItem>
             <SelectItem value="Alimentação">Alimentação</SelectItem>
-            <SelectItem value="Transporte">Transporte</SelectItem>
-            <SelectItem value="Saúde">Saúde</SelectItem>
-            <SelectItem value="Educação">Educação</SelectItem>
-            <SelectItem value="Lazer">Lazer</SelectItem>
-            <SelectItem value="Vestuário">Vestuário</SelectItem>
             <SelectItem value="Contas">Contas</SelectItem>
-            <SelectItem value="Impostos">Impostos</SelectItem>
             <SelectItem value="Dívidas">Dívidas</SelectItem>
             <SelectItem value="Doações">Doações</SelectItem>
+            <SelectItem value="Educação">Educação</SelectItem>
+            <SelectItem value="Impostos">Impostos</SelectItem>
+            <SelectItem value="Lazer">Lazer</SelectItem>
+            <SelectItem value="Moradia">Moradia</SelectItem>
+            <SelectItem value="Saúde">Saúde</SelectItem>
+            <SelectItem value="Transporte">Transporte</SelectItem>
+            <SelectItem value="Vestuário">Vestuário</SelectItem>
             <SelectItem value="Outros">Outros</SelectItem>
           </SelectContent>
         </Select>

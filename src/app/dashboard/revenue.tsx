@@ -1,15 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { addMonths, format, subMonths, startOfMonth, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import {
-  CalendarIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  Trash,
-  Trash2,
-} from 'lucide-react'
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -22,10 +22,10 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
-  TableFooter,
 } from '@/components/ui/table'
 import {
   Tooltip,
@@ -33,17 +33,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { supabase } from '@/util/supabase/supabase'
+import { createClient } from '@/util/supabase/client'
+import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+  CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Trash2,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 
 interface ChildComponentProps {
   revenue: {
@@ -72,6 +71,7 @@ const useIsMobile = () => {
 }
 
 export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
+  const supabase = useMemo(() => createClient(), [])
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
   const [categoria, setCategoria] = useState('Todas')
   const [receitasFiltradas, setReceitasFiltradas] = useState(revenue)
