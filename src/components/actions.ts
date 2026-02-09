@@ -98,3 +98,7 @@ export async function signOut() {
 export async function revalidateDashboard() {
   revalidatePath('/dashboard', 'page')
 }
+
+export async function revalidateAfterInsert() {
+  revalidatePath('/dashboard', 'page')
+}

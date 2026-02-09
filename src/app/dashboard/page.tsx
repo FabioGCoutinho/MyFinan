@@ -47,12 +47,90 @@ export default async function DashboardPage() {
     )
   }
 
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth() + 1
+  const getFinancialHistory = (
+    allRevenues: { value: number; created_at: string }[],
+    allExpenses: { value: number; created_at: string }[]
+  ) => {
+    // 1. Calcular a data de início (1º dia do mês, 12 meses atrás)
+    const today = new Date()
+    const startDate = new Date(today.getFullYear(), today.getMonth() - 11, 1)
+    const startDateISO = startDate.toISOString()
 
-  const startOfMonth = `${year}-${month.toString().padStart(2, '0')}-01`
-  const endOfMonth = `${year}-${month.toString().padStart(2, '0')}-31`
+    // 2. Filtrar os dados pela data inicial (reutilizando dados já carregados)
+    const revenues = allRevenues.filter(item => item.created_at >= startDateISO)
+    const expenses = allExpenses.filter(item => item.created_at >= startDateISO)
+
+    // 3. Função auxiliar para normalizar os dados
+    // O objetivo é criar um array unificado que o gráfico entenda facilmente
+    const processHistory = (
+      revenues: { value: number; created_at: string }[],
+      expenses: { value: number; created_at: string }[]
+    ) => {
+      const historyMap = new Map()
+
+      // A. Gerar as chaves para os últimos 12 meses (garante que meses zerados apareçam)
+      for (let i = 0; i < 12; i++) {
+        // Começa 11 meses atrás e vai até o mês atual
+        const d = new Date(today.getFullYear(), today.getMonth() - 11 + i, 1)
+
+        const year = d.getFullYear()
+        const monthIndex = d.getMonth() // 0 a 11
+
+        // Chave única para agrupar (ex: "2024-0")
+        const key = `${year}-${monthIndex}`
+
+        // Nome do mês em PT-BR (ex: "Jan")
+        const monthName = new Intl.DateTimeFormat('pt-BR', {
+          month: 'short',
+        }).format(d)
+
+        const formattedDate = `${String(monthIndex + 1).padStart(2, '0')}/${year}`
+
+        // Inicializa o objeto zerado
+        historyMap.set(key, {
+          month: capitalizeFirstLetter(monthName), // "Jan"
+          monthIndex: monthIndex + 1, // 1 (numérico)
+          year: year, // 2024
+          dateLabel: formattedDate,
+          revenue: 0,
+          expense: 0,
+          fullDate: d, // útil se precisar ordenar ou formatar depois
+        })
+      }
+
+      // B. Somar Receitas
+      for (const item of revenues) {
+        const d = new Date(item.created_at)
+        const key = `${d.getFullYear()}-${d.getMonth()}`
+
+        if (historyMap.has(key)) {
+          const current = historyMap.get(key)
+          current.revenue += Number(item.value)
+        }
+      }
+
+      // C. Somar Despesas
+      for (const item of expenses) {
+        const d = new Date(item.created_at)
+        const key = `${d.getFullYear()}-${d.getMonth()}`
+
+        if (historyMap.has(key)) {
+          const current = historyMap.get(key)
+          current.expense += Number(item.value)
+        }
+      }
+
+      // D. Retornar array ordenado cronologicamente
+      return Array.from(historyMap.values())
+    }
+
+    return processHistory(revenues, expenses)
+  }
+
+  // Pequeno helper para deixar "jan" como "Jan"
+  function capitalizeFirstLetter(string: string) {
+    return string.charAt(0).toUpperCase() + string.slice(1)
+  }
 
   try {
     const [revenueData, expenseData] = await Promise.all([
@@ -67,6 +145,8 @@ export default async function DashboardPage() {
       revenueData: revenueData.data || [],
       expenseData: expenseData.data || [],
     }
+
+    const kpiUser = getFinancialHistory(data.revenueData, data.expenseData)
 
     return (
       <div className="flex flex-col items-center min-h-dvh">
@@ -83,7 +163,11 @@ export default async function DashboardPage() {
               <TabsTrigger value="relatorio">Relatório</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="space-y-4">
-              <Overview revenue={data.revenueData} expense={data.expenseData} />
+              <Overview
+                revenue={data.revenueData}
+                expense={data.expenseData}
+                kpiUser={kpiUser}
+              />
             </TabsContent>
             <TabsContent value="expense" className="space-y-4">
               <Expense

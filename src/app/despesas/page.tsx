@@ -1,5 +1,6 @@
 'use client'
 
+import { revalidateAfterInsert } from '@/components/actions'
 import {
   AlertDialogAction,
   AlertDialogContent,
@@ -21,14 +22,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { supabase } from '@/util/supabase/supabase'
+import { createClient } from '@/util/supabase/client'
 import { AlertDialog } from '@radix-ui/react-alert-dialog'
 import type { User } from '@supabase/supabase-js'
 import { addMonths } from 'date-fns'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import PulseLoader from 'react-spinners/PulseLoader'
 
 export default function Despesas() {
+  const supabase = useMemo(() => createClient(), [])
   const [expense, setExpense] = useState('')
   const [valor, setValor] = useState('')
   const [value, setValue] = useState(0)
@@ -42,11 +44,14 @@ export default function Despesas() {
   const [isDisabled, setIsDisabled] = useState(false)
 
   useEffect(() => {
-    //obtem os dados do usuario salvo no localStorage
-    const a = localStorage.getItem('user')
-    const user = a ? JSON.parse(a) : null
-    setUser(user)
-  }, [])
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    getUser()
+  }, [supabase])
 
   const formatarValor = (value: string) => {
     // Remove todos os caracteres não numéricos
@@ -98,6 +103,7 @@ export default function Despesas() {
           setError(error?.message)
         }
       }
+      await revalidateAfterInsert()
       setAlertShow(true)
       return
     }
@@ -114,6 +120,7 @@ export default function Despesas() {
 
       if (error) throw error
 
+      await revalidateAfterInsert()
       setAlertShow(true)
 
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>

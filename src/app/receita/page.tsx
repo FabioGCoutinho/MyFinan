@@ -1,5 +1,6 @@
 'use client'
 
+import { revalidateAfterInsert } from '@/components/actions'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +23,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { supabase } from '@/util/supabase/supabase'
+import { createClient } from '@/util/supabase/client'
 import type { User } from '@supabase/supabase-js'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 export default function Receitas() {
+  const supabase = useMemo(() => createClient(), [])
   const [revenue, setRevenue] = useState('')
   const [valor, setValor] = useState('')
   const [value, setValue] = useState(0)
@@ -38,11 +40,14 @@ export default function Receitas() {
   const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
-    //obtem os dados do usuario salvos no localStorage
-    const a = localStorage.getItem('user')
-    const user = a ? JSON.parse(a) : null
-    setUser(user)
-  }, [])
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    getUser()
+  }, [supabase])
 
   const formatarValor = (value: string) => {
     // Remove todos os caracteres não numéricos
@@ -81,6 +86,7 @@ export default function Receitas() {
 
       if (error) throw error
 
+      await revalidateAfterInsert()
       setAlertShow(true)
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     } catch (error: any) {

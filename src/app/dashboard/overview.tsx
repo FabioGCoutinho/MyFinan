@@ -1,11 +1,17 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart'
 import { format, parseISO, startOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { DollarSign, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { DollarSign, Loader2, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
 interface ChildComponentProps {
   revenue: {
@@ -26,53 +32,63 @@ interface ChildComponentProps {
     updated_at: Date
     value: number
   }[]
+  kpiUser: {
+    month: string
+    year: number
+    revenue: number
+    expense: number
+    monthIndex: number
+  }[]
 }
 
-const data = [
-  { name: 'Jan', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Fev', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Mar', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Abr', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Mai', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Jun', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Jul', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Ago', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Set', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Out', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Nov', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Dez', total: Math.floor(Math.random() * 5000) + 1000 },
-]
+const chartConfig = {
+  expense: {
+    label: 'Despesas',
+    color: '#2563eb',
+  },
+  revenue: {
+    label: 'Receitas',
+    color: '#60a5fa',
+  },
+} satisfies ChartConfig
 
-export function Overview({ revenue, expense }: ChildComponentProps) {
-  const [despesasFiltradas, setDespesasFiltradas] = useState(expense)
-  const [receitasFiltradas, setReceitasFiltradas] = useState(revenue)
+export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
 
   // Ordenar o array pelo campo de data em ordem decrescente
-  expense.sort(
-    (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  const sortedExpense = useMemo(
+    () =>
+      [...expense].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ),
+    [expense]
   )
 
-  useEffect(() => {
-    const filteredDespesas = expense.filter(despesa => {
-      const despesaDate = parseISO(despesa.created_at)
-      return (
-        despesaDate.getMonth() === date.getMonth() &&
-        despesaDate.getFullYear() === date.getFullYear()
-      )
-    })
-    const filteredRevenue = revenue.filter(revenue => {
-      const revenueDate = parseISO(revenue.created_at)
-      return (
-        revenueDate.getMonth() === date.getMonth() &&
-        revenueDate.getFullYear() === date.getFullYear()
-      )
-    })
+  // Filtrar dados diretamente via useMemo (sem flash de dados não filtrados)
+  const despesasFiltradas = useMemo(
+    () =>
+      sortedExpense.filter(despesa => {
+        const despesaDate = parseISO(despesa.created_at)
+        return (
+          despesaDate.getMonth() === date.getMonth() &&
+          despesaDate.getFullYear() === date.getFullYear()
+        )
+      }),
+    [date, sortedExpense]
+  )
 
-    setReceitasFiltradas(filteredRevenue)
-    setDespesasFiltradas(filteredDespesas)
-  }, [date, expense, revenue])
+  const receitasFiltradas = useMemo(
+    () =>
+      revenue.filter(rev => {
+        const revenueDate = parseISO(rev.created_at)
+        return (
+          revenueDate.getMonth() === date.getMonth() &&
+          revenueDate.getFullYear() === date.getFullYear()
+        )
+      }),
+    [date, revenue]
+  )
 
   //faz a subitração da receita com a despesa
   const total =
@@ -85,7 +101,7 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="bg-green-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total das Receitas
@@ -106,7 +122,7 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-red-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total das Despesas
@@ -127,7 +143,7 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Qnt. de Despesas
@@ -144,7 +160,7 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-purple-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Saldo</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -166,13 +182,16 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
             <CardTitle>Visão Geral</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={data}>
+            <ChartContainer
+              config={chartConfig}
+              className="min-h-[200px] w-full"
+            >
+              <BarChart accessibilityLayer data={kpiUser}>
+                <CartesianGrid vertical={false} />
                 <XAxis
-                  dataKey="name"
-                  stroke="#888888"
-                  fontSize={12}
+                  dataKey="dateLabel"
                   tickLine={false}
+                  tickMargin={10}
                   axisLine={false}
                 />
                 <YAxis
@@ -181,14 +200,38 @@ export function Overview({ revenue, expense }: ChildComponentProps) {
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={value => `R$ ${value}`}
+                  domain={[
+                    0,
+                    (dataMax: number) => Math.ceil(dataMax / 500) * 500,
+                  ]}
                 />
-                <Bar
-                  dataKey="total"
-                  fill="hsl(var(--primary))"
-                  radius={[4, 4, 0, 0]}
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      // O indicator="dashed" ou "dot" é opcional, estilo visual
+                      indicator="dashed"
+                      // AQUI ESTÁ O SEGREDO PARA O VALOR EM R$
+                      formatter={(value, name) => (
+                        <div className="flex min-w-[150px] items-center text-xs text-muted-foreground">
+                          {/* Aqui buscamos o nome correto no config (Receitas/Despesas) */}
+                          {chartConfig[name as keyof typeof chartConfig]
+                            ?.label || name}
+                          <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(Number(value))}
+                          </div>
+                        </div>
+                      )}
+                    />
+                  }
                 />
+                <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
+                <Bar dataKey="expense" fill="var(--color-expense)" radius={4} />
               </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
         <Card className="col-span-4 lg:col-span-3">
