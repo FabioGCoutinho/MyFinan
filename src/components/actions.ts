@@ -99,6 +99,89 @@ export async function revalidateDashboard() {
   revalidatePath('/dashboard', 'page')
 }
 
+export async function updateProfile(displayName: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, message: 'Usuário não autenticado.' }
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    data: { full_name: displayName },
+  })
+
+  if (error) {
+    return { success: false, message: error.message }
+  }
+
+  revalidatePath('/config', 'page')
+  return { success: true, message: 'Nome atualizado com sucesso!' }
+}
+
+export async function updatePassword(
+  currentPassword: string,
+  newPassword: string
+) {
+  const supabase = await createClient()
+
+  // Verificar senha atual fazendo login novamente
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.email) {
+    return { success: false, message: 'Usuário não encontrado.' }
+  }
+
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  })
+
+  if (signInError) {
+    return { success: false, message: 'Senha atual incorreta.' }
+  }
+
+  // Atualizar para a nova senha
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  })
+
+  if (error) {
+    return { success: false, message: error.message }
+  }
+
+  return { success: true, message: 'Senha alterada com sucesso!' }
+}
+
+export async function deleteAccount() {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, message: 'Usuário não encontrado.' }
+  }
+
+  // Excluir dados do usuário nas tabelas
+  await Promise.all([
+    supabase.from('revenue').delete().eq('user_id', user.id),
+    supabase.from('expense').delete().eq('user_id', user.id),
+  ])
+
+  // Deslogar o usuário (a exclusão da conta auth requer admin key)
+  await supabase.auth.signOut()
+
+  revalidatePath('/', 'layout')
+  redirect('/')
+}
+
 export async function revalidateAfterInsert() {
   revalidatePath('/dashboard', 'page')
 }

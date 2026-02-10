@@ -10,15 +10,9 @@ import {
 import { Bell, Menu, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
-import { useEffect } from 'react'
 import { Button } from './button'
 export function Header() {
   const { setTheme, theme } = useTheme()
-
-  useEffect(() => {
-    setTheme('dark')
-    document.documentElement.style.setProperty('--primary', '294 54 21')
-  }, [setTheme])
 
   return (
     <header className="flex w-full h-14 lg:h-[60px] items-center gap-4 border-b bg-background px-6">
@@ -40,7 +34,7 @@ export function Header() {
             <Link href="/receita">Adicionar Receitas</Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
-            <Link href="#">Configurações</Link>
+            <Link href="/config">Configurações</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -73,7 +67,7 @@ export function Header() {
           <li>
             <Link
               className="text-sm font-medium hover:underline hover:text-purple-400 underline-offset-4"
-              href="#"
+              href="/config"
             >
               Configurações
             </Link>

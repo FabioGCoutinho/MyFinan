@@ -1,5 +1,5 @@
-import type { NextRequest } from 'next/server'
 import { updateSession } from '@/util/supabase/middleware'
+import type { NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   return await updateSession(request)
@@ -19,6 +19,7 @@ export const config = {
     '/category/:path*',
     '/despesas/:path*',
     '/receita/:path*',
+    '/config/:path*',
     '/login/:path*',
     // '/:path*',
   ],

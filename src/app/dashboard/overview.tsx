@@ -7,9 +7,19 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
-import { format, parseISO, startOfMonth } from 'date-fns'
+import { formatCurrency, formatVariation } from '@/lib/utils'
+import { format, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { DollarSign, Users } from 'lucide-react'
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  DollarSign,
+  type LucideIcon,
+  Minus,
+  Receipt,
+  Scale,
+  Users,
+} from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Area,
@@ -21,33 +31,52 @@ import {
   YAxis,
 } from 'recharts'
 
-interface ChildComponentProps {
-  revenue: {
-    category: string
-    created_at: string
-    id: number
-    obs: string
-    revenue: string
-    updated_at: Date
-    value: number
-  }[]
-  expense: {
-    category: string
-    created_at: string
-    id: number
-    obs: string
-    expense: string
-    updated_at: Date
-    value: number
-  }[]
-  kpiUser: {
-    month: string
-    year: number
-    revenue: number
-    expense: number
-    monthIndex: number
-  }[]
+// ── Tipos ──────────────────────────────────────────────
+
+interface RevenueItem {
+  category: string
+  created_at: string
+  id: number
+  obs: string
+  revenue: string
+  updated_at: Date
+  value: number
 }
+
+interface ExpenseItem {
+  category: string
+  created_at: string
+  id: number
+  obs: string
+  expense: string
+  updated_at: Date
+  value: number
+}
+
+interface KpiItem {
+  month: string
+  year: number
+  revenue: number
+  expense: number
+  monthIndex: number
+}
+
+interface ChildComponentProps {
+  revenue: RevenueItem[]
+  expense: ExpenseItem[]
+  kpiUser: KpiItem[]
+}
+
+interface KpiCardProps {
+  title: string
+  value: string
+  variation: string
+  description: string
+  icon: LucideIcon
+  bgColor: string
+}
+
+// ── Constantes ─────────────────────────────────────────
 
 const chartConfig = {
   expense: {
@@ -59,6 +88,8 @@ const chartConfig = {
     color: '#60a5fa',
   },
 } satisfies ChartConfig
+
+// ── Hooks ──────────────────────────────────────────────
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(false)
@@ -73,11 +104,84 @@ const useIsMobile = () => {
   return isMobile
 }
 
+// ── Helpers ────────────────────────────────────────────
+
+function filterByMonth<T extends { created_at: string }>(
+  items: T[],
+  date: Date
+): T[] {
+  return items.filter(item => {
+    const d = parseISO(item.created_at)
+    return (
+      d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear()
+    )
+  })
+}
+
+function sumValues<T extends { value: number }>(items: T[]): number {
+  return items.reduce((sum, item) => sum + item.value, 0)
+}
+
+function getVariationIcon(variation: string) {
+  if (variation.startsWith('+')) return ArrowUpRight
+  if (variation.startsWith('-')) return ArrowDownRight
+  return Minus
+}
+
+// ── Tooltip formatter compartilhado ────────────────────
+
+const tooltipFormatter = (
+  value: string | number | (string | number)[],
+  name: string | number
+) => (
+  <div className="flex min-w-[150px] items-center text-xs text-muted-foreground">
+    {chartConfig[String(name) as keyof typeof chartConfig]?.label || name}
+    <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
+      {formatCurrency(Number(value))}
+    </div>
+  </div>
+)
+
+// ── Componentes ────────────────────────────────────────
+
+function KpiCard({
+  title,
+  value,
+  variation,
+  description,
+  icon: Icon,
+  bgColor,
+}: KpiCardProps) {
+  const VariationIcon = getVariationIcon(variation)
+
+  return (
+    <Card className={bgColor}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+          <VariationIcon className="h-3 w-3" />
+          {variation} {description}
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Componente principal ───────────────────────────────
+
 export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
-  const [date, setDate] = useState<Date>(startOfMonth(new Date()))
+  const currentMonth = useMemo(() => startOfMonth(new Date()), [])
+  const previousMonth = useMemo(
+    () => subMonths(currentMonth, 1),
+    [currentMonth]
+  )
   const isMobile = useIsMobile()
 
-  // Ordenar o array pelo campo de data em ordem decrescente
+  // Dados do mês atual
   const sortedExpense = useMemo(
     () =>
       [...expense].sort(
@@ -87,116 +191,95 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
     [expense]
   )
 
-  // Filtrar dados diretamente via useMemo (sem flash de dados não filtrados)
   const despesasFiltradas = useMemo(
-    () =>
-      sortedExpense.filter(despesa => {
-        const despesaDate = parseISO(despesa.created_at)
-        return (
-          despesaDate.getMonth() === date.getMonth() &&
-          despesaDate.getFullYear() === date.getFullYear()
-        )
-      }),
-    [date, sortedExpense]
+    () => filterByMonth(sortedExpense, currentMonth),
+    [currentMonth, sortedExpense]
   )
 
   const receitasFiltradas = useMemo(
-    () =>
-      revenue.filter(rev => {
-        const revenueDate = parseISO(rev.created_at)
-        return (
-          revenueDate.getMonth() === date.getMonth() &&
-          revenueDate.getFullYear() === date.getFullYear()
-        )
-      }),
-    [date, revenue]
+    () => filterByMonth(revenue, currentMonth),
+    [currentMonth, revenue]
   )
 
-  //faz a subitração da receita com a despesa
-  const total =
-    receitasFiltradas.reduce((sum, item) => sum + item.value, 0) -
-    despesasFiltradas.reduce((sum, item) => sum + item.value, 0)
+  // Dados do mês anterior (para calcular variação %)
+  const despesasMesAnterior = useMemo(
+    () => filterByMonth(expense, previousMonth),
+    [previousMonth, expense]
+  )
 
-  // Exibir apenas os últimos 5 itens
+  const receitasMesAnterior = useMemo(
+    () => filterByMonth(revenue, previousMonth),
+    [previousMonth, revenue]
+  )
+
+  // Totais memorizados
+  const totalReceitas = useMemo(
+    () => sumValues(receitasFiltradas),
+    [receitasFiltradas]
+  )
+  const totalDespesas = useMemo(
+    () => sumValues(despesasFiltradas),
+    [despesasFiltradas]
+  )
+  const saldo = totalReceitas - totalDespesas
+
+  const totalReceitasAnterior = useMemo(
+    () => sumValues(receitasMesAnterior),
+    [receitasMesAnterior]
+  )
+  const totalDespesasAnterior = useMemo(
+    () => sumValues(despesasMesAnterior),
+    [despesasMesAnterior]
+  )
+  const saldoAnterior = totalReceitasAnterior - totalDespesasAnterior
+
+  // Variações calculadas
+  const variacaoReceitas = formatVariation(totalReceitas, totalReceitasAnterior)
+  const variacaoDespesas = formatVariation(totalDespesas, totalDespesasAnterior)
+  const variacaoQtdDespesas = formatVariation(
+    despesasFiltradas.length,
+    despesasMesAnterior.length
+  )
+  const variacaoSaldo = formatVariation(saldo, saldoAnterior)
+
+  // Últimas 5 despesas
   const lastFiveItems = despesasFiltradas.slice(0, 5)
 
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-green-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total das Receitas
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {receitasFiltradas
-                .reduce((sum, item) => sum + item.value, 0)
-                .toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +20,1% em relação ao mês passado
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-red-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total das Despesas
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {despesasFiltradas
-                .reduce((sum, item) => sum + item.value, 0)
-                .toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +180,1% em relação ao mês passado
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-blue-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Qnt. de Despesas
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {despesasFiltradas.length}{' '}
-              {despesasFiltradas.length <= 1 ? 'Despesa' : 'Despesas'} no mês
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +19% em relação ao mês passado
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-purple-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saldo</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {total.toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground">Receita - Despesa</p>
-          </CardContent>
-        </Card>
+        <KpiCard
+          title="Total das Receitas"
+          value={formatCurrency(totalReceitas)}
+          variation={variacaoReceitas}
+          description="em relação ao mês passado"
+          icon={DollarSign}
+          bgColor="bg-green-800"
+        />
+        <KpiCard
+          title="Total das Despesas"
+          value={formatCurrency(totalDespesas)}
+          variation={variacaoDespesas}
+          description="em relação ao mês passado"
+          icon={Users}
+          bgColor="bg-red-800"
+        />
+        <KpiCard
+          title="Qnt. de Despesas"
+          value={`${despesasFiltradas.length} ${despesasFiltradas.length <= 1 ? 'Despesa' : 'Despesas'} no mês`}
+          variation={variacaoQtdDespesas}
+          description="em relação ao mês passado"
+          icon={Receipt}
+          bgColor="bg-blue-800"
+        />
+        <KpiCard
+          title="Saldo"
+          value={formatCurrency(saldo)}
+          variation={variacaoSaldo}
+          description="em relação ao mês passado"
+          icon={Scale}
+          bgColor="bg-purple-800"
+        />
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
@@ -260,18 +343,7 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
                     content={
                       <ChartTooltipContent
                         indicator="dot"
-                        formatter={(value, name) => (
-                          <div className="flex min-w-[150px] items-center text-xs text-muted-foreground">
-                            {chartConfig[name as keyof typeof chartConfig]
-                              ?.label || name}
-                            <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                              {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              }).format(Number(value))}
-                            </div>
-                          </div>
-                        )}
+                        formatter={tooltipFormatter}
                       />
                     }
                   />
@@ -315,18 +387,7 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
                     content={
                       <ChartTooltipContent
                         indicator="dashed"
-                        formatter={(value, name) => (
-                          <div className="flex min-w-[150px] items-center text-xs text-muted-foreground">
-                            {chartConfig[name as keyof typeof chartConfig]
-                              ?.label || name}
-                            <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                              {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              }).format(Number(value))}
-                            </div>
-                          </div>
-                        )}
+                        formatter={tooltipFormatter}
                       />
                     }
                   />
@@ -364,17 +425,12 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
                         {format(
                           parseISO(item.created_at),
                           "EEEE, dd 'de' LLLL 'de' yyyy",
-                          {
-                            locale: ptBR,
-                          }
+                          { locale: ptBR }
                         )}
                       </p>
                     </div>
                     <div className="ml-auto font-medium">
-                      {item.value.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      })}
+                      {formatCurrency(item.value)}
                     </div>
                   </div>
                 ))
