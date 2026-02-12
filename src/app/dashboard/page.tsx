@@ -14,7 +14,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center min-h-dvh">
       <Header />
-      <main className="flex flex-col lg:w-3/4 md:w-5/6 w-full space-y-4 p-2 md:p-8 pt-6">
+      <main className="flex flex-col xl:w-3/4 w-full space-y-4 p-2 md:p-8 pt-6">
         {children}
       </main>
     </div>

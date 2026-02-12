@@ -185,10 +185,10 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
           <TableBody>
             {receitasFiltradas.map(receitas => (
               <TableRow key={receitas.id}>
-                <TableCell className="text-gray-700 font-medium w-5">
+                <TableCell className="text-muted-foreground font-medium w-5">
                   <Button
                     variant="ghost"
-                    className="py-0 px-2 hover:bg-purple-600 hover:text-white transform hover:scale-110"
+                    className="py-0 px-2 hover:bg-brand hover:text-brand-foreground transform hover:scale-110"
                     onClick={() => handleDeledComfim(receitas.id)}
                   >
                     <Trash2 size={16} />
@@ -203,7 +203,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
                             {receitas.revenue}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent className="w-80 bg-gray-700 text-white">
+                        <TooltipContent className="w-80 bg-surface text-surface-foreground">
                           <p className="font-semibold">Descrição:</p>
                           <p>{receitas.obs}</p>
                         </TooltipContent>
@@ -255,7 +255,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className=" text-white hover:bg-purple-900"
+              className=" text-brand-foreground hover:bg-brand/80"
               onClick={() => handleDeledRevenue()}
             >
               Continue

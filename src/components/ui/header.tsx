@@ -42,7 +42,7 @@ export function Header() {
         <ul className="hidden lg:flex gap-4">
           <li>
             <Link
-              className="text-sm font-medium hover:underline hover:text-purple-400 underline-offset-4"
+              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
               href="/dashboard"
             >
               Visão Geral
@@ -50,7 +50,7 @@ export function Header() {
           </li>
           <li>
             <Link
-              className="text-sm font-medium hover:underline hover:text-purple-400 underline-offset-4"
+              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
               href="/despesas"
             >
               Adicionar Despesas
@@ -58,7 +58,7 @@ export function Header() {
           </li>
           <li>
             <Link
-              className="text-sm font-medium hover:underline hover:text-purple-400 underline-offset-4"
+              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
               href="/receita"
             >
               Adicionar Receitas
@@ -66,7 +66,7 @@ export function Header() {
           </li>
           <li>
             <Link
-              className="text-sm font-medium hover:underline hover:text-purple-400 underline-offset-4"
+              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
               href="/config"
             >
               Configurações
@@ -100,7 +100,7 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
-          className="bg-button text-button-foreground hover:bg-purple-900"
+          className="bg-button text-button-foreground hover:bg-brand/80"
           onClick={() => signOut()}
         >
           Sair

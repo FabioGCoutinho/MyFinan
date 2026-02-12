@@ -13,8 +13,9 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatVariation(current: number, previous: number): string {
-  if (previous === 0) return current > 0 ? '+100%' : '0%'
-  const variation = ((current - previous) / previous) * 100
+  if (previous === 0)
+    return current > 0 ? '+100%' : current < 0 ? '-100%' : '0%'
+  const variation = ((current - previous) / Math.abs(previous)) * 100
   const sign = variation >= 0 ? '+' : ''
   return `${sign}${variation.toFixed(1).replace('.', ',')}%`
 }

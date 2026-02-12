@@ -250,7 +250,7 @@ export default function Despesas() {
               </div>
               <Button
                 type="submit"
-                className="w-full bg-button text-button-foreground hover:bg-purple-900"
+                className="w-full bg-button text-button-foreground hover:bg-brand/80"
                 disabled={isDisabled}
               >
                 {isDisabled ? (
@@ -271,7 +271,7 @@ export default function Despesas() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogAction className="w-full text-white hover:bg-purple-900">
+              <AlertDialogAction className="w-full text-brand-foreground hover:bg-brand/80">
                 Continue
               </AlertDialogAction>
             </AlertDialogFooter>

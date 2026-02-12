@@ -101,7 +101,7 @@ function ProfileSection({ user }: { user: User }) {
 
         {message && (
           <p
-            className={`text-sm ${message.type === 'success' ? 'text-green-400' : 'text-red-400'}`}
+            className={`text-sm ${message.type === 'success' ? 'text-success' : 'text-danger'}`}
           >
             {message.text}
           </p>
@@ -110,7 +110,7 @@ function ProfileSection({ user }: { user: User }) {
         <Button
           onClick={handleSaveProfile}
           disabled={loading}
-          className="bg-button text-button-foreground hover:bg-purple-900"
+          className="bg-button text-button-foreground hover:bg-brand/80"
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -229,7 +229,7 @@ function SecuritySection({ user }: { user: User }) {
 
               {message && (
                 <p
-                  className={`text-sm ${message.type === 'success' ? 'text-green-400' : 'text-red-400'}`}
+                  className={`text-sm ${message.type === 'success' ? 'text-success' : 'text-danger'}`}
                 >
                   {message.text}
                 </p>
@@ -238,7 +238,7 @@ function SecuritySection({ user }: { user: User }) {
               <Button
                 onClick={handleChangePassword}
                 disabled={loading}
-                className="bg-button text-button-foreground hover:bg-purple-900"
+                className="bg-button text-button-foreground hover:bg-brand/80"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -253,7 +253,7 @@ function SecuritySection({ user }: { user: User }) {
 
       <Card className="border-destructive">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-400">
+          <CardTitle className="flex items-center gap-2 text-danger">
             <Shield className="h-5 w-5" />
             Zona de Perigo
           </CardTitle>
@@ -351,16 +351,16 @@ function AppearanceSection() {
                 onClick={() => setTheme(t.value)}
                 className={`flex flex-col items-center gap-3 rounded-lg border-2 p-4 transition-colors ${
                   isActive
-                    ? 'border-purple-500 bg-purple-500/10'
+                    ? 'border-brand bg-brand/10'
                     : 'border-border hover:border-muted-foreground/50'
                 }`}
               >
                 <Icon
-                  className={`h-8 w-8 ${isActive ? 'text-purple-400' : 'text-muted-foreground'}`}
+                  className={`h-8 w-8 ${isActive ? 'text-brand' : 'text-muted-foreground'}`}
                 />
                 <div className="text-center">
                   <p
-                    className={`text-sm font-medium ${isActive ? 'text-purple-400' : ''}`}
+                    className={`text-sm font-medium ${isActive ? 'text-brand' : ''}`}
                   >
                     {t.label}
                   </p>
@@ -368,7 +368,7 @@ function AppearanceSection() {
                     {t.description}
                   </p>
                 </div>
-                {isActive && <Check className="h-4 w-4 text-purple-400" />}
+                {isActive && <Check className="h-4 w-4 text-brand" />}
               </button>
             )
           })}

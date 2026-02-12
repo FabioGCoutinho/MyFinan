@@ -1,9 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { addMonths, format, subMonths, startOfMonth, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -16,10 +12,10 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
-  TableFooter,
 } from '@/components/ui/table'
 import {
   Tooltip,
@@ -27,6 +23,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface ChildComponentProps {
   revenue: {
@@ -145,7 +145,7 @@ export function Relatorio({ revenue, expense }: ChildComponentProps) {
           <hr />
           <div className="mt-2">
             <span>Receitas: </span>
-            <span className="text-green-500">
+            <span className="text-success">
               {totalReceitas.toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL',
@@ -154,7 +154,7 @@ export function Relatorio({ revenue, expense }: ChildComponentProps) {
           </div>
           <div className="mb-2">
             <span>Despesas: </span>
-            <span className="text-red-500">
+            <span className="text-danger">
               {totalDespesas.toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL',
@@ -167,8 +167,8 @@ export function Relatorio({ revenue, expense }: ChildComponentProps) {
             <span
               className={`${
                 totalReceitas - totalDespesas >= 0
-                  ? 'text-green-500'
-                  : 'text-red-500'
+                  ? 'text-success'
+                  : 'text-danger'
               }`}
             >
               {(totalReceitas - totalDespesas).toLocaleString('pt-BR', {
@@ -202,7 +202,7 @@ export function Relatorio({ revenue, expense }: ChildComponentProps) {
                               {despesa.revenue}
                             </span>
                           </TooltipTrigger>
-                          <TooltipContent className="w-80 bg-gray-700 text-white">
+                          <TooltipContent className="w-80 bg-surface text-surface-foreground">
                             <p className="font-semibold">Descrição:</p>
                             <p>{despesa.obs}</p>
                           </TooltipContent>
@@ -260,7 +260,7 @@ export function Relatorio({ revenue, expense }: ChildComponentProps) {
                               {despesa.expense}
                             </span>
                           </TooltipTrigger>
-                          <TooltipContent className="w-80 bg-gray-700 text-white">
+                          <TooltipContent className="w-80 bg-surface text-surface-foreground">
                             <p className="font-semibold">Descrição:</p>
                             <p>{despesa.obs}</p>
                           </TooltipContent>

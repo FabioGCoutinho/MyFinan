@@ -38,7 +38,7 @@ export default function CriarConta({ onVoltar }: CriarContaProps) {
 
   return (
     <div className="w-full max-w-md p-8 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center text-white">
+      <h2 className="text-2xl font-bold mb-6 text-center text-foreground">
         Criar Conta
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -49,7 +49,7 @@ export default function CriarConta({ onVoltar }: CriarContaProps) {
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            className="bg-gray-700 text-white placeholder-gray-400"
+            className="bg-surface text-surface-foreground placeholder:text-muted-foreground"
           />
         </div>
         <div>
@@ -59,7 +59,7 @@ export default function CriarConta({ onVoltar }: CriarContaProps) {
             value={senha}
             onChange={e => setSenha(e.target.value)}
             required
-            className="bg-gray-700 text-white placeholder-gray-400"
+            className="bg-surface text-surface-foreground placeholder:text-muted-foreground"
           />
         </div>
         <div>
@@ -69,17 +69,17 @@ export default function CriarConta({ onVoltar }: CriarContaProps) {
             value={confirmarSenha}
             onChange={e => setConfirmarSenha(e.target.value)}
             required
-            className="bg-gray-700 text-white placeholder-gray-400"
+            className="bg-surface text-surface-foreground placeholder:text-muted-foreground"
           />
         </div>
         {confirmarSenha !== senha ? (
-          <span className="text-red-500 text-xs">As senhas não são iguais</span>
+          <span className="text-danger text-xs">As senhas não são iguais</span>
         ) : (
           ''
         )}
         <Button
           type="submit"
-          className="w-full bg-button text-button-foreground hover:bg-purple-900"
+          className="w-full bg-button text-button-foreground hover:bg-brand/80"
           disabled={isDisabled}
         >
           Criar conta
@@ -89,7 +89,7 @@ export default function CriarConta({ onVoltar }: CriarContaProps) {
         <Button
           variant="link"
           onClick={onVoltar}
-          className="text-blue-400 hover:underline"
+          className="text-brand hover:underline"
         >
           Voltar para o login
         </Button>

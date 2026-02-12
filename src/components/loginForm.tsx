@@ -35,7 +35,9 @@ export default function LoginForm({
 
   return (
     <div className="w-full max-w-md p-8 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center text-white">Entrar</h2>
+      <h2 className="text-2xl font-bold mb-6 text-center text-foreground">
+        Entrar
+      </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <Input
@@ -44,7 +46,7 @@ export default function LoginForm({
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            className="bg-gray-700 text-white placeholder-gray-400"
+            className="bg-surface text-surface-foreground placeholder:text-muted-foreground"
           />
         </div>
         <div>
@@ -54,11 +56,11 @@ export default function LoginForm({
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
-            className="bg-gray-700 text-white placeholder-gray-400"
+            className="bg-surface text-surface-foreground placeholder:text-muted-foreground"
           />
         </div>
         <Button
-          className="w-full bg-button text-button-foreground font-semibold text-base hover:bg-purple-900"
+          className="w-full bg-button text-button-foreground font-semibold text-base hover:bg-brand/80"
           disabled={isDisabled}
         >
           {isDisabled ? <PulseLoader color="#fff" /> : 'Entrar'}
@@ -67,7 +69,7 @@ export default function LoginForm({
       <div className="mt-4 flex flex-col space-y-2">
         <Button
           variant="outline"
-          className="w-full text-white border-gray-600 hover:bg-gray-700"
+          className="w-full text-foreground border-border hover:bg-muted"
           onClick={() => loginWithGoogle()}
         >
           <Image
@@ -80,7 +82,7 @@ export default function LoginForm({
         </Button>
         <Button
           variant="outline"
-          className="w-full text-white border-gray-600 hover:bg-gray-700"
+          className="w-full text-foreground border-border hover:bg-muted"
           onClick={() => console.log('Login do Facebook')}
         >
           <Image
@@ -96,14 +98,14 @@ export default function LoginForm({
         <Button
           variant="link"
           onClick={onRecuperarSenha}
-          className="text-blue-400 hover:underline"
+          className="text-brand hover:underline"
         >
           Esqueceu sua senha?
         </Button>
         <Button
           variant="link"
           onClick={onCriarConta}
-          className="text-blue-400 hover:underline"
+          className="text-brand hover:underline"
         >
           Criar uma conta
         </Button>
