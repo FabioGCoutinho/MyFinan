@@ -14,6 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import type {
+  CreditCardExpense,
+  CreditCard as CreditCardType,
+} from '@/lib/credit-card'
+import { getInvoicePeriod } from '@/lib/credit-card'
 import { formatCurrency, formatVariation } from '@/lib/utils'
 import { format, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -23,6 +28,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarIcon,
+  CreditCard as CreditCardLucide,
   DollarSign,
   type LucideIcon,
   Minus,
@@ -46,6 +52,7 @@ import {
   LineChart,
   Pie,
   PieChart,
+  ResponsiveContainer,
   XAxis,
   YAxis,
 } from 'recharts'
@@ -86,6 +93,8 @@ interface ChildComponentProps {
   revenue: RevenueItem[]
   expense: ExpenseItem[]
   kpiUser: KpiItem[]
+  creditCards: CreditCardType[]
+  creditCardExpenses: CreditCardExpense[]
 }
 
 interface KpiCardProps {
@@ -324,16 +333,18 @@ function KpiCard({
           {variation} {description}
         </p>
         {sparklineData && sparklineData.length > 1 && (
-          <div className="mt-3 h-10 w-full">
-            <LineChart width={200} height={40} data={sparklineData}>
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke={sparklineColor}
-                strokeWidth={1.5}
-                dot={false}
-              />
-            </LineChart>
+          <div className="mt-3 h-10 w-full overflow-hidden">
+            <ResponsiveContainer width="100%" height={40}>
+              <LineChart data={sparklineData}>
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke={sparklineColor}
+                  strokeWidth={1.5}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         )}
       </CardContent>
@@ -343,7 +354,13 @@ function KpiCard({
 
 // ── Componente principal ───────────────────────────────
 
-export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
+export function Overview({
+  revenue,
+  expense,
+  kpiUser,
+  creditCards,
+  creditCardExpenses,
+}: ChildComponentProps) {
   const monthOptions = useMemo(() => buildMonthOptions(12), [])
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value)
 
@@ -390,32 +407,80 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
     [previousMonth, revenue]
   )
 
+  // ── Faturas de cartão no mês selecionado ───────────
+
+  const cardInvoiceTotals = useMemo(() => {
+    return creditCards
+      .map(card => {
+        const { start, end } = getInvoicePeriod(
+          selectedDate.getFullYear(),
+          selectedDate.getMonth(),
+          card.closing_day
+        )
+        const total = creditCardExpenses
+          .filter(exp => {
+            if (exp.card_id !== card.id) return false
+            const expDate = parseISO(exp.created_at)
+            return expDate >= start && expDate <= end
+          })
+          .reduce((sum, exp) => sum + Number(exp.value), 0)
+        return { card, total }
+      })
+      .filter(item => item.total > 0)
+  }, [creditCards, creditCardExpenses, selectedDate])
+
+  const totalCartao = useMemo(
+    () => cardInvoiceTotals.reduce((sum, item) => sum + item.total, 0),
+    [cardInvoiceTotals]
+  )
+
+  // Faturas do mês anterior (para variação)
+  const totalCartaoAnterior = useMemo(() => {
+    return creditCards.reduce((sum, card) => {
+      const { start, end } = getInvoicePeriod(
+        previousMonth.getFullYear(),
+        previousMonth.getMonth(),
+        card.closing_day
+      )
+      return (
+        sum +
+        creditCardExpenses
+          .filter(exp => {
+            if (exp.card_id !== card.id) return false
+            const expDate = parseISO(exp.created_at)
+            return expDate >= start && expDate <= end
+          })
+          .reduce((s, exp) => s + Number(exp.value), 0)
+      )
+    }, 0)
+  }, [creditCards, creditCardExpenses, previousMonth])
+
   // Totais memorizados
   const totalReceitas = useMemo(
     () => sumValues(receitasFiltradas),
     [receitasFiltradas]
   )
-  const totalDespesas = useMemo(
+  const totalDespesasDiretas = useMemo(
     () => sumValues(despesasFiltradas),
     [despesasFiltradas]
   )
+  const totalDespesas = totalDespesasDiretas + totalCartao
   const saldo = totalReceitas - totalDespesas
 
   const totalReceitasAnterior = useMemo(
     () => sumValues(receitasMesAnterior),
     [receitasMesAnterior]
   )
-  const totalDespesasAnterior = useMemo(
-    () => sumValues(despesasMesAnterior),
-    [despesasMesAnterior]
-  )
+  const totalDespesasAnterior =
+    useMemo(() => sumValues(despesasMesAnterior), [despesasMesAnterior]) +
+    totalCartaoAnterior
   const saldoAnterior = totalReceitasAnterior - totalDespesasAnterior
 
   // Variações calculadas
   const variacaoReceitas = formatVariation(totalReceitas, totalReceitasAnterior)
   const variacaoDespesas = formatVariation(totalDespesas, totalDespesasAnterior)
   const variacaoQtdDespesas = formatVariation(
-    despesasFiltradas.length,
+    despesasFiltradas.length + cardInvoiceTotals.length,
     despesasMesAnterior.length
   )
   const variacaoSaldo = formatVariation(saldo, saldoAnterior)
@@ -445,11 +510,19 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
     [kpiUser]
   )
 
-  // Dados do gráfico de pizza (categorias)
-  const categoryData = useMemo(
-    () => groupByCategory(despesasFiltradas),
-    [despesasFiltradas]
-  )
+  // Dados do gráfico de pizza (categorias) — inclui cartão
+  const categoryData = useMemo(() => {
+    // Despesas diretas
+    const combined = [...despesasFiltradas]
+    // Adicionar gastos de cartão como itens de categoria
+    for (const { card, total } of cardInvoiceTotals) {
+      combined.push({
+        category: `Cartão: ${card.name}`,
+        value: total,
+      } as ExpenseItem)
+    }
+    return groupByCategory(combined)
+  }, [despesasFiltradas, cardInvoiceTotals])
 
   // Cor do saldo
   const saldoBg =
@@ -461,14 +534,16 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
 
   // Verifica se o mês tem dados
   const hasAnyData =
-    receitasFiltradas.length > 0 || despesasFiltradas.length > 0
+    receitasFiltradas.length > 0 ||
+    despesasFiltradas.length > 0 ||
+    cardInvoiceTotals.length > 0
 
   return (
     <motion.div
       variants={stagger}
       initial="initial"
       animate="animate"
-      className="space-y-4"
+      className="space-y-4 overflow-hidden"
     >
       {/* ── Seletor de mês ──────────────────────────── */}
       <motion.div variants={fadeInUp} className="flex items-center gap-3">
@@ -557,7 +632,7 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
               <motion.div variants={fadeInUp}>
                 <KpiCard
                   title="Qnt. de Despesas"
-                  value={`${despesasFiltradas.length} ${despesasFiltradas.length <= 1 ? 'Despesa' : 'Despesas'} no mês`}
+                  value={`${despesasFiltradas.length + cardInvoiceTotals.length} ${(despesasFiltradas.length + cardInvoiceTotals.length) <= 1 ? 'Despesa' : 'Despesas'} no mês`}
                   variation={variacaoQtdDespesas}
                   description="em relação ao mês anterior"
                   icon={Receipt}
@@ -624,11 +699,8 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
           )}
 
           {/* ── Gráficos (tooltip melhorado + legenda - item 9) */}
-          <motion.div
-            variants={fadeInUp}
-            className="grid gap-4 md:grid-cols-2 lg:grid-cols-7"
-          >
-            <Card className="col-span-4">
+          <motion.div variants={fadeInUp} className="grid gap-4 lg:grid-cols-7">
+            <Card className="lg:col-span-4">
               <CardHeader>
                 <CardTitle>Visão Geral</CardTitle>
               </CardHeader>
@@ -743,13 +815,14 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
                 <ChartLegend />
               </CardContent>
             </Card>
-            <Card className="col-span-4 lg:col-span-3">
+            <Card className="lg:col-span-3">
               <CardHeader>
                 <CardTitle>Últimas 5 Despesas</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-8">
-                  {lastFiveItems.length <= 0 ? (
+                  {lastFiveItems.length <= 0 &&
+                  cardInvoiceTotals.length <= 0 ? (
                     <div className="flex flex-col items-center py-8 text-center">
                       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                         <TrendingDown className="h-6 w-6 text-muted-foreground" />
@@ -767,25 +840,48 @@ export function Overview({ revenue, expense, kpiUser }: ChildComponentProps) {
                       </Link>
                     </div>
                   ) : (
-                    lastFiveItems.map(item => (
-                      <div key={item.id} className="flex items-center">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {item.expense}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {format(
-                              parseISO(item.created_at),
-                              "EEEE, dd 'de' LLLL 'de' yyyy",
-                              { locale: ptBR }
-                            )}
-                          </p>
+                    <>
+                      {lastFiveItems.map(item => (
+                        <div key={item.id} className="flex items-center">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium leading-none">
+                              {item.expense}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(
+                                parseISO(item.created_at),
+                                "EEEE, dd 'de' LLLL 'de' yyyy",
+                                { locale: ptBR }
+                              )}
+                            </p>
+                          </div>
+                          <div className="ml-auto font-medium">
+                            {formatCurrency(item.value)}
+                          </div>
                         </div>
-                        <div className="ml-auto font-medium">
-                          {formatCurrency(item.value)}
-                        </div>
-                      </div>
-                    ))
+                      ))}
+                      {cardInvoiceTotals.map(({ card, total }) => (
+                        <Link
+                          key={`card-${card.id}`}
+                          href="/cartao"
+                          className="flex items-center group hover:bg-muted/50 -mx-2 px-2 py-1 rounded-md transition-colors"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium leading-none flex items-center gap-1.5">
+                              <CreditCardLucide className="h-3.5 w-3.5 text-info" />
+                              Fatura {card.name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              ****{card.last_digits} · Vencimento dia{' '}
+                              {card.due_day}
+                            </p>
+                          </div>
+                          <div className="ml-auto font-medium text-info">
+                            {formatCurrency(total)}
+                          </div>
+                        </Link>
+                      ))}
+                    </>
                   )}
                 </div>
               </CardContent>

@@ -33,6 +33,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
+import { getInvoicePeriod } from '@/lib/credit-card'
 import { createClient } from '@/util/supabase/client'
 import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -40,8 +42,10 @@ import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CreditCard as CreditCardIcon,
   Trash2,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 
 interface ChildComponentProps {
@@ -54,6 +58,8 @@ interface ChildComponentProps {
     updated_at: Date
     value: number
   }[]
+  creditCards: CreditCard[]
+  creditCardExpenses: CreditCardExpense[]
   onActionCompleted: () => void
 }
 
@@ -70,7 +76,12 @@ const useIsMobile = () => {
   return isMobile
 }
 
-export function Expense({ expense, onActionCompleted }: ChildComponentProps) {
+export function Expense({
+  expense,
+  creditCards,
+  creditCardExpenses,
+  onActionCompleted,
+}: ChildComponentProps) {
   const supabase = useMemo(() => createClient(), [])
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
   const [selectedCategory, setSelectedCategory] = useState('Todas')
@@ -79,9 +90,33 @@ export function Expense({ expense, onActionCompleted }: ChildComponentProps) {
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
-  // console.log(expense)
-
   const isMobile = useIsMobile()
+
+  // Calcular faturas de cartão para o mês selecionado
+  const cardInvoiceTotals = useMemo(() => {
+    return creditCards
+      .map(card => {
+        const { start, end } = getInvoicePeriod(
+          date.getFullYear(),
+          date.getMonth(),
+          card.closing_day
+        )
+        const total = creditCardExpenses
+          .filter(exp => {
+            if (exp.card_id !== card.id) return false
+            const expDate = parseISO(exp.created_at)
+            return expDate >= start && expDate <= end
+          })
+          .reduce((sum, exp) => sum + Number(exp.value), 0)
+        return { card, total }
+      })
+      .filter(item => item.total > 0)
+  }, [creditCards, creditCardExpenses, date])
+
+  const totalCartao = useMemo(
+    () => cardInvoiceTotals.reduce((sum, item) => sum + item.total, 0),
+    [cardInvoiceTotals]
+  )
 
   useEffect(() => {
     const filteredDespesas = expense
@@ -234,17 +269,55 @@ export function Expense({ expense, onActionCompleted }: ChildComponentProps) {
                 </TableCell>
               </TableRow>
             ))}
+            {/* Faturas de cartão */}
+            {(selectedCategory === 'Todas' || selectedCategory === 'Cartão') &&
+              cardInvoiceTotals.map(({ card, total }) => (
+                <TableRow key={`card-${card.id}`}>
+                  <TableCell className="text-muted-foreground font-medium w-5">
+                    <CreditCardIcon size={16} className="mx-2 text-info" />
+                  </TableCell>
+                  <TableCell colSpan={isMobile ? 2 : 0} className="font-medium">
+                    <Link
+                      href="/cartao"
+                      className="flex flex-col md:flex-row md:items-center hover:text-info transition-colors"
+                    >
+                      <span>Fatura {card.name}</span>
+                      <span className="text-sm text-muted-foreground md:hidden mt-1">
+                        ****{card.last_digits} · Venc. dia {card.due_day}
+                      </span>
+                    </Link>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">
+                    Venc. dia {card.due_day}
+                  </TableCell>
+                  <TableCell className="text-info font-medium">
+                    Cartão
+                  </TableCell>
+                  <TableCell className="text-right text-info font-medium">
+                    {total.toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    })}
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
           <TableFooter>
             <TableRow>
               <TableCell colSpan={4}>Total</TableCell>
               <TableCell className="text-right font-bold">
-                {despesasFiltradas
-                  .reduce((total, despesa) => total + despesa.value, 0)
-                  .toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  })}
+                {(
+                  despesasFiltradas.reduce(
+                    (total, despesa) => total + despesa.value,
+                    0
+                  ) +
+                  (selectedCategory === 'Todas' || selectedCategory === 'Cartão'
+                    ? totalCartao
+                    : 0)
+                ).toLocaleString('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                })}
               </TableCell>
             </TableRow>
           </TableFooter>

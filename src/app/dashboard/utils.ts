@@ -1,3 +1,6 @@
+import { getInvoicePeriod } from '@/lib/credit-card'
+import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
+
 function capitalizeFirstLetter(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
@@ -19,11 +22,13 @@ interface MonthlyHistory {
 
 /**
  * Gera o histórico financeiro dos últimos 12 meses,
- * agrupando receitas e despesas por mês.
+ * agrupando receitas, despesas e faturas de cartão por mês.
  */
 export function buildFinancialHistory(
   allRevenues: FinancialItem[],
-  allExpenses: FinancialItem[]
+  allExpenses: FinancialItem[],
+  creditCards: CreditCard[] = [],
+  creditCardExpenses: CreditCardExpense[] = []
 ): MonthlyHistory[] {
   const today = new Date()
   const startDate = new Date(today.getFullYear(), today.getMonth() - 11, 1)
@@ -70,6 +75,25 @@ export function buildFinancialHistory(
     const key = `${d.getFullYear()}-${d.getMonth()}`
     const entry = historyMap.get(key)
     if (entry) entry.expense += Number(item.value)
+  }
+
+  // Somar faturas de cartão de crédito
+  for (const card of creditCards) {
+    for (const entry of Array.from(historyMap.values())) {
+      const { start, end } = getInvoicePeriod(
+        entry.fullDate.getFullYear(),
+        entry.fullDate.getMonth(),
+        card.closing_day
+      )
+      const cardTotal = creditCardExpenses
+        .filter(exp => {
+          if (exp.card_id !== card.id) return false
+          const expDate = new Date(exp.created_at)
+          return expDate >= start && expDate <= end
+        })
+        .reduce((sum, exp) => sum + Number(exp.value), 0)
+      entry.expense += cardTotal
+    }
   }
 
   return Array.from(historyMap.values())

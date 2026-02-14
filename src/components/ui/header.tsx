@@ -34,6 +34,12 @@ export function Header() {
             <Link href="/receita">Adicionar Receitas</Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
+            <Link href="/cartao/novo">Gasto no Cartão</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/cartao">Gastos no Cartão</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
             <Link href="/config">Configurações</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -62,6 +68,22 @@ export function Header() {
               href="/receita"
             >
               Adicionar Receitas
+            </Link>
+          </li>
+          <li>
+            <Link
+              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
+              href="/cartao/novo"
+            >
+              Gasto no Cartão
+            </Link>
+          </li>
+          <li>
+            <Link
+              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
+              href="/cartao"
+            >
+              Gastos no Cartão
             </Link>
           </li>
           <li>

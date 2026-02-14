@@ -169,8 +169,10 @@ export async function deleteAccount() {
     return { success: false, message: 'Usuário não encontrado.' }
   }
 
-  // Excluir dados do usuário nas tabelas
+  // Excluir dados do usuário nas tabelas (credit_card_expense via CASCADE)
   await Promise.all([
+    supabase.from('credit_card_expense').delete().eq('user_id', user.id),
+    supabase.from('credit_card').delete().eq('user_id', user.id),
     supabase.from('revenue').delete().eq('user_id', user.id),
     supabase.from('expense').delete().eq('user_id', user.id),
   ])
@@ -183,5 +185,10 @@ export async function deleteAccount() {
 }
 
 export async function revalidateAfterInsert() {
+  revalidatePath('/dashboard', 'page')
+}
+
+export async function revalidateAfterCardAction() {
+  revalidatePath('/cartao', 'page')
   revalidatePath('/dashboard', 'page')
 }

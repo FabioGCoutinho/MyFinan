@@ -77,6 +77,21 @@ export default function Despesas() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setError(null)
+
+    if (!expense.trim() || !value || !date || !category) {
+      setError('Preencha todos os campos obrigatórios.')
+      return
+    }
+
+    if (
+      category === 'Compras parceladas' &&
+      (!qtd_parcelas || qtd_parcelas < 1)
+    ) {
+      setError('Informe a quantidade de parcelas.')
+      return
+    }
+
     setIsDisabled(true)
 
     // Se for compras parceladas, executa o for para fazer na quantidade de meses referente a qtd de parcelas
@@ -248,6 +263,7 @@ export default function Despesas() {
                   onChange={e => setObs(e.target.value)}
                 />
               </div>
+              {error && <p className="text-sm text-danger">{error}</p>}
               <Button
                 type="submit"
                 className="w-full bg-button text-button-foreground hover:bg-brand/80"
@@ -271,7 +287,7 @@ export default function Despesas() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogAction className="w-full text-brand-foreground hover:bg-brand/80">
+              <AlertDialogAction className="w-full bg-button text-button-foreground hover:bg-brand/80">
                 Continue
               </AlertDialogAction>
             </AlertDialogFooter>

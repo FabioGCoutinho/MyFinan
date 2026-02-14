@@ -26,9 +26,16 @@ function PageShell({ children }: { children: React.ReactNode }) {
 async function fetchFinancialData(userId: string) {
   const supabase = await createClient()
 
-  const [revenueResult, expenseResult] = await Promise.all([
+  const [
+    revenueResult,
+    expenseResult,
+    creditCardResult,
+    creditCardExpenseResult,
+  ] = await Promise.all([
     supabase.from('revenue').select('*').eq('user_id', userId),
     supabase.from('expense').select('*').eq('user_id', userId),
+    supabase.from('credit_card').select('*').eq('user_id', userId),
+    supabase.from('credit_card_expense').select('*').eq('user_id', userId),
   ])
 
   if (revenueResult.error) throw revenueResult.error
@@ -37,6 +44,8 @@ async function fetchFinancialData(userId: string) {
   return {
     revenues: revenueResult.data ?? [],
     expenses: expenseResult.data ?? [],
+    creditCards: creditCardResult.data ?? [],
+    creditCardExpenses: creditCardExpenseResult.data ?? [],
   }
 }
 
@@ -60,8 +69,14 @@ export default async function DashboardPage() {
   }
 
   try {
-    const { revenues, expenses } = await fetchFinancialData(user.id)
-    const kpiUser = buildFinancialHistory(revenues, expenses)
+    const { revenues, expenses, creditCards, creditCardExpenses } =
+      await fetchFinancialData(user.id)
+    const kpiUser = buildFinancialHistory(
+      revenues,
+      expenses,
+      creditCards,
+      creditCardExpenses
+    )
 
     return (
       <PageShell>
@@ -76,11 +91,19 @@ export default async function DashboardPage() {
             <TabsTrigger value="relatorio">Relatório</TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="space-y-4">
-            <Overview revenue={revenues} expense={expenses} kpiUser={kpiUser} />
+            <Overview
+              revenue={revenues}
+              expense={expenses}
+              kpiUser={kpiUser}
+              creditCards={creditCards}
+              creditCardExpenses={creditCardExpenses}
+            />
           </TabsContent>
           <TabsContent value="expense" className="space-y-4">
             <Expense
               expense={expenses}
+              creditCards={creditCards}
+              creditCardExpenses={creditCardExpenses}
               onActionCompleted={revalidateDashboard}
             />
           </TabsContent>

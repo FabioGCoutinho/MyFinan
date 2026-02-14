@@ -20,6 +20,7 @@ export const config = {
     '/despesas/:path*',
     '/receita/:path*',
     '/config/:path*',
+    '/cartao/:path*',
     '/login/:path*',
     // '/:path*',
   ],
