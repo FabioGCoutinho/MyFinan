@@ -1,15 +1,9 @@
 'use client'
 
-import {
-  AmexLogo,
-  EloLogo,
-  HipercardLogo,
-  MastercardLogo,
-  VisaLogo,
-} from '@/components/icons'
 import type { CreditCard } from '@/lib/credit-card'
 import { cn } from '@/lib/utils'
 import { Wifi } from 'lucide-react'
+import Image from 'next/image'
 
 /**
  * Mapeia cada bandeira para um gradiente de fundo.
@@ -23,24 +17,23 @@ const brandGradients: Record<string, string> = {
   hipercard: 'from-red-950 via-red-900 to-red-950',
 }
 
+const SUPPORTED_BRANDS = ['visa', 'mastercard', 'elo', 'amex', 'hipercard']
+
 function BrandLogo({
   brand,
   className,
 }: { brand: string; className?: string }) {
-  switch (brand) {
-    case 'visa':
-      return <VisaLogo className={className} />
-    case 'mastercard':
-      return <MastercardLogo className={className} />
-    case 'elo':
-      return <EloLogo className={className} />
-    case 'amex':
-      return <AmexLogo className={className} />
-    case 'hipercard':
-      return <HipercardLogo className={className} />
-    default:
-      return null
-  }
+  if (!SUPPORTED_BRANDS.includes(brand)) return null
+  return (
+    <Image
+      src={`/img/icons/${brand}.svg`}
+      alt={brand}
+      width={64}
+      height={40}
+      className={cn('object-contain', className)}
+      priority
+    />
+  )
 }
 
 interface CreditCardVisualProps {
