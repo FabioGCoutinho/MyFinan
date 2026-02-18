@@ -33,6 +33,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useIsMobile } from '@/hooks/use-mobile'
 import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
 import { getInvoicePeriod } from '@/lib/credit-card'
 import { createClient } from '@/util/supabase/client'
@@ -46,7 +47,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 interface ChildComponentProps {
   expense: {
@@ -63,19 +64,6 @@ interface ChildComponentProps {
   onActionCompleted: () => void
 }
 
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const checkIsMobile = () => setIsMobile(window.innerWidth < 768)
-    checkIsMobile()
-    window.addEventListener('resize', checkIsMobile)
-    return () => window.removeEventListener('resize', checkIsMobile)
-  }, [])
-
-  return isMobile
-}
-
 export function Expense({
   expense,
   creditCards,
@@ -85,7 +73,6 @@ export function Expense({
   const supabase = useMemo(() => createClient(), [])
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
   const [selectedCategory, setSelectedCategory] = useState('Todas')
-  const [despesasFiltradas, setDespesasFiltradas] = useState(expense)
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -118,8 +105,8 @@ export function Expense({
     [cardInvoiceTotals]
   )
 
-  useEffect(() => {
-    const filteredDespesas = expense
+  const despesasFiltradas = useMemo(() => {
+    return expense
       .filter(despesa => {
         const despesaDate = parseISO(despesa.created_at)
         return (
@@ -132,10 +119,8 @@ export function Expense({
       .sort((a, b) => {
         const dateA = parseISO(a.created_at).getTime()
         const dateB = parseISO(b.created_at).getTime()
-        return dateA - dateB // Ordem decrescente
+        return dateA - dateB
       })
-
-    setDespesasFiltradas(filteredDespesas)
   }, [date, selectedCategory, expense])
 
   const handlePreviousMonth = () => {
@@ -336,10 +321,10 @@ export function Expense({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className=" text-brand-foreground hover:bg-brand/80"
+              className="bg-button text-button-foreground hover:bg-brand/80"
               onClick={() => handleDeledExpense()}
             >
-              Continue
+              Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

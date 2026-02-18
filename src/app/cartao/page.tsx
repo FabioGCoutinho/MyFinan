@@ -36,6 +36,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useIsMobile } from '@/hooks/use-mobile'
 import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
 import { getInvoicePeriod } from '@/lib/credit-card'
 import { createClient } from '@/util/supabase/client'
@@ -50,19 +51,6 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-
-// ── Hooks ──────────────────────────────────────────────
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false)
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-  return isMobile
-}
 
 // ── Página ─────────────────────────────────────────────
 

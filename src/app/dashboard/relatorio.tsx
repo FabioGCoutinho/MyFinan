@@ -1,303 +1,372 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart'
 import {
   Table,
   TableBody,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { formatCurrency, formatVariation } from '@/lib/utils'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+  ArrowDownRight,
+  ArrowUpRight,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from 'lucide-react'
+import { useMemo } from 'react'
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import type { MonthlyHistory } from './utils'
 
-interface ChildComponentProps {
+// ── Chart config ───────────────────────────────────────
+const chartConfig = {
+  balance: {
+    label: 'Saldo',
+    color: '#8b5cf6',
+  },
   revenue: {
-    category: string
-    created_at: string
-    id: number
-    obs: string
-    revenue: string
-    updated_at: Date
-    value: number
-  }[]
+    label: 'Receitas',
+    color: '#22c55e',
+  },
   expense: {
-    category: string
-    created_at: string
-    id: number
-    obs: string
-    expense: string
-    updated_at: Date
-    value: number
-  }[]
+    label: 'Despesas',
+    color: '#ef4444',
+  },
+} satisfies ChartConfig
+
+// ── Tooltip personalizado ──────────────────────────────
+function CustomLineTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: { value: number; dataKey: string; color: string }[]
+  label?: string
+}) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-lg border bg-background p-3 shadow-md">
+      <p className="mb-2 font-semibold text-sm">{label}</p>
+      {payload.map(entry => (
+        <div key={entry.dataKey} className="flex items-center gap-2 text-sm">
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="text-muted-foreground">
+            {chartConfig[entry.dataKey as keyof typeof chartConfig]?.label}:
+          </span>
+          <span className="font-medium">{formatCurrency(entry.value)}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const checkIsMobile = () => setIsMobile(window.innerWidth < 768)
-    checkIsMobile()
-    window.addEventListener('resize', checkIsMobile)
-    return () => window.removeEventListener('resize', checkIsMobile)
-  }, [])
-
-  return isMobile
+// ── Props ──────────────────────────────────────────────
+interface RelatorioProps {
+  kpiUser: MonthlyHistory[]
 }
 
-export function Relatorio({ revenue, expense }: ChildComponentProps) {
-  const [date, setDate] = useState<Date>(startOfMonth(new Date()))
-  const [categoria, setCategoria] = useState('Todas')
-  const [receitasFiltradas, setReceitasFiltradas] = useState(revenue)
-  const [despesasFiltradas, setDespesasFiltradas] = useState(expense)
-
+export function Relatorio({ kpiUser }: RelatorioProps) {
   const isMobile = useIsMobile()
 
-  useEffect(() => {
-    const filteredReceitas = revenue
-      .filter(receitas => {
-        const despesaDate = parseISO(receitas.created_at)
-        return (
-          despesaDate.getMonth() === date.getMonth() &&
-          despesaDate.getFullYear() === date.getFullYear()
-        )
-      })
-      .sort((a, b) => {
-        const dateA = parseISO(a.created_at).getTime()
-        const dateB = parseISO(b.created_at).getTime()
-        return dateA - dateB // Ordem decrescente
-      })
-    setReceitasFiltradas(filteredReceitas)
-    const filteredDespesas = expense
-      .filter(despesa => {
-        const despesaDate = parseISO(despesa.created_at)
-        return (
-          despesaDate.getMonth() === date.getMonth() &&
-          despesaDate.getFullYear() === date.getFullYear()
-        )
-      })
-      .sort((a, b) => {
-        const dateA = parseISO(a.created_at).getTime()
-        const dateB = parseISO(b.created_at).getTime()
-        return dateA - dateB // Ordem decrescente
-      })
-    setDespesasFiltradas(filteredDespesas)
-  }, [date, revenue, expense])
-
-  const handlePreviousMonth = () => {
-    setDate(prevDate => startOfMonth(subMonths(prevDate, 1)))
-  }
-
-  const handleNextMonth = () => {
-    setDate(prevDate => startOfMonth(addMonths(prevDate, 1)))
-  }
-
-  const totalReceitas = receitasFiltradas.reduce(
-    (total, receitas) => total + receitas.value,
-    0
+  // Dados do gráfico com saldo calculado
+  const chartData = useMemo(
+    () =>
+      kpiUser.map(m => ({
+        ...m,
+        balance: m.revenue - m.expense,
+      })),
+    [kpiUser]
   )
-  const totalDespesas = despesasFiltradas.reduce(
-    (total, despesa) => total + despesa.value,
-    0
-  )
+
+  // Métricas acumuladas
+  const metrics = useMemo(() => {
+    const mesesComDados = chartData.filter(m => m.revenue > 0 || m.expense > 0)
+    const total = mesesComDados.length || 1
+
+    const avgRevenue = mesesComDados.reduce((s, m) => s + m.revenue, 0) / total
+    const avgExpense = mesesComDados.reduce((s, m) => s + m.expense, 0) / total
+    const avgBalance = avgRevenue - avgExpense
+
+    const bestMonth = mesesComDados.reduce(
+      (best, m) => (m.balance > best.balance ? m : best),
+      mesesComDados[0] ?? { dateLabel: '-', balance: 0 }
+    )
+    const worstMonth = mesesComDados.reduce(
+      (worst, m) => (m.balance < worst.balance ? m : worst),
+      mesesComDados[0] ?? { dateLabel: '-', balance: 0 }
+    )
+
+    const totalRevenue = mesesComDados.reduce((s, m) => s + m.revenue, 0)
+    const totalExpense = mesesComDados.reduce((s, m) => s + m.expense, 0)
+    const savingsRate =
+      totalRevenue > 0
+        ? ((totalRevenue - totalExpense) / totalRevenue) * 100
+        : 0
+
+    return {
+      avgRevenue,
+      avgExpense,
+      avgBalance,
+      bestMonth,
+      worstMonth,
+      savingsRate,
+    }
+  }, [chartData])
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" onClick={handlePreviousMonth}>
-            <ChevronLeftIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="w-[200px] justify-start text-left font-normal"
-            disabled
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {format(date, 'MMMM yyyy', { locale: ptBR })}
-          </Button>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}>
-            <ChevronRightIcon className="h-4 w-4" />
-          </Button>
-        </div>
+    <div className="space-y-6">
+      {/* ── Métricas acumuladas ─────────────────────────── */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Média Receitas
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-success" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl md:text-2xl font-bold text-success">
+              {formatCurrency(metrics.avgRevenue)}
+            </p>
+            <p className="text-xs text-muted-foreground">por mês</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Média Despesas
+            </CardTitle>
+            <TrendingDown className="h-4 w-4 text-danger" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl md:text-2xl font-bold text-danger">
+              {formatCurrency(metrics.avgExpense)}
+            </p>
+            <p className="text-xs text-muted-foreground">por mês</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Melhor Mês</CardTitle>
+            <ArrowUpRight className="h-4 w-4 text-success" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl md:text-2xl font-bold text-success">
+              {formatCurrency(metrics.bestMonth.balance)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {metrics.bestMonth.dateLabel}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Pior Mês</CardTitle>
+            <ArrowDownRight className="h-4 w-4 text-danger" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl md:text-2xl font-bold text-danger">
+              {formatCurrency(metrics.worstMonth.balance)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {metrics.worstMonth.dateLabel}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="flex gap-4 md:flex-row flex-col">
-        <div className="w-full md:w-1/4 h-min border rounded-lg p-4">
-          <h1 className="text-2xl font-semibold">Resumo</h1>
-          <hr />
-          <div className="mt-2">
-            <span>Receitas: </span>
-            <span className="text-success">
-              {totalReceitas.toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-              })}
-            </span>
+      {/* ── Gráfico de evolução ─────────────────────────── */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Evolução Financeira</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Últimos 12 meses — receitas, despesas e saldo
+            </p>
           </div>
-          <div className="mb-2">
-            <span>Despesas: </span>
-            <span className="text-danger">
-              {totalDespesas.toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-              })}
-            </span>
-          </div>
-          <hr />
-          <div className="mt-4">
-            <span>Saldo: </span>
+          <div className="flex items-center gap-1 text-sm">
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Taxa de economia:</span>
             <span
-              className={`${
-                totalReceitas - totalDespesas >= 0
-                  ? 'text-success'
-                  : 'text-danger'
+              className={`font-semibold ${
+                metrics.savingsRate >= 0 ? 'text-success' : 'text-danger'
               }`}
             >
-              {(totalReceitas - totalDespesas).toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-              })}
+              {metrics.savingsRate.toFixed(1).replace('.', ',')}%
             </span>
           </div>
-        </div>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
+            <LineChart accessibilityLayer data={chartData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis
+                dataKey={isMobile ? 'month' : 'dateLabel'}
+                tickLine={false}
+                tickMargin={8}
+                axisLine={false}
+              />
+              {!isMobile && (
+                <YAxis
+                  stroke="#888888"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  width={80}
+                  tickFormatter={v => `R$ ${v}`}
+                />
+              )}
+              <ReferenceLine y={0} stroke="#888888" strokeDasharray="3 3" />
+              <ChartTooltip content={<CustomLineTooltip />} />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="var(--color-revenue)"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="expense"
+                stroke="var(--color-expense)"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="balance"
+                stroke="var(--color-balance)"
+                strokeWidth={2.5}
+                strokeDasharray="5 5"
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ChartContainer>
 
-        <div className="overflow-hidden w-full md:w-3/4">
-          <h1 className="text-3xl font-bold">Receitas</h1>
+          {/* Legenda manual */}
+          <div className="flex items-center justify-center gap-6 mt-4 text-sm">
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2.5 w-8 rounded-full"
+                style={{ backgroundColor: chartConfig.revenue.color }}
+              />
+              <span className="text-muted-foreground">Receitas</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2.5 w-8 rounded-full"
+                style={{ backgroundColor: chartConfig.expense.color }}
+              />
+              <span className="text-muted-foreground">Despesas</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2.5 w-8 rounded-full border-2 border-dashed"
+                style={{ borderColor: chartConfig.balance.color }}
+              />
+              <span className="text-muted-foreground">Saldo</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Tabela comparativa mês a mês ────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Comparativo Mensal</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Variação mês a mês com receitas, despesas e saldo
+          </p>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead colSpan={isMobile ? 2 : 0}>Nome</TableHead>
-                <TableHead className="hidden md:table-cell">Data</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
+                <TableHead>Mês</TableHead>
+                <TableHead className="text-right">Receitas</TableHead>
+                <TableHead className="text-right">Despesas</TableHead>
+                <TableHead className="text-right">Saldo</TableHead>
+                <TableHead className="text-right hidden md:table-cell">
+                  Var. Saldo
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {receitasFiltradas.map(despesa => (
-                <TableRow key={despesa.id}>
-                  <TableCell colSpan={isMobile ? 2 : 0} className="font-medium">
-                    <div className="flex flex-col md:flex-row md:items-center">
-                      <TooltipProvider>
-                        <Tooltip delayDuration={isMobile ? 1000 : 0}>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-help">
-                              {despesa.revenue}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent className="w-80 bg-surface text-surface-foreground">
-                            <p className="font-semibold">Descrição:</p>
-                            <p>{despesa.obs}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <span className="text-sm text-muted-foreground md:hidden mt-1">
-                        {format(parseISO(despesa.created_at), 'dd/MM/yyyy')}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {format(parseISO(despesa.created_at), 'dd/MM/yyyy')}
-                  </TableCell>
-                  <TableCell>{despesa.category}</TableCell>
-                  <TableCell className="text-right">
-                    {despesa.value.toLocaleString('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL',
-                    })}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {chartData.map((m, i) => {
+                const prevBalance = i > 0 ? chartData[i - 1].balance : null
+
+                return (
+                  <TableRow key={m.dateLabel}>
+                    <TableCell className="font-medium">
+                      {isMobile ? m.month : m.dateLabel}
+                    </TableCell>
+                    <TableCell className="text-right text-success">
+                      {formatCurrency(m.revenue)}
+                    </TableCell>
+                    <TableCell className="text-right text-danger">
+                      {formatCurrency(m.expense)}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-semibold ${
+                        m.balance >= 0 ? 'text-success' : 'text-danger'
+                      }`}
+                    >
+                      {formatCurrency(m.balance)}
+                    </TableCell>
+                    <TableCell className="text-right hidden md:table-cell">
+                      {prevBalance !== null ? (
+                        <span
+                          className={`inline-flex items-center gap-1 text-sm ${
+                            m.balance >= prevBalance
+                              ? 'text-success'
+                              : 'text-danger'
+                          }`}
+                        >
+                          {m.balance >= prevBalance ? (
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                          ) : (
+                            <ArrowDownRight className="h-3.5 w-3.5" />
+                          )}
+                          {formatVariation(m.balance, prevBalance)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
-            <TableFooter>
-              <TableRow>
-                <TableCell colSpan={3}>Total</TableCell>
-                <TableCell className="text-right font-bold">
-                  {totalReceitas.toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  })}
-                </TableCell>
-              </TableRow>
-            </TableFooter>
           </Table>
-          <h1 className="text-3xl font-bold mt-6">Despesa</h1>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead colSpan={isMobile ? 2 : 0}>Nome</TableHead>
-                <TableHead className="hidden md:table-cell">Data</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {despesasFiltradas.map(despesa => (
-                <TableRow key={despesa.id}>
-                  <TableCell colSpan={isMobile ? 2 : 0} className="font-medium">
-                    <div className="flex flex-col md:flex-row md:items-center">
-                      <TooltipProvider>
-                        <Tooltip delayDuration={isMobile ? 1000 : 0}>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-help">
-                              {despesa.expense}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent className="w-80 bg-surface text-surface-foreground">
-                            <p className="font-semibold">Descrição:</p>
-                            <p>{despesa.obs}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <span className="text-sm text-muted-foreground md:hidden mt-1">
-                        {format(parseISO(despesa.created_at), 'dd/MM/yyyy')}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {format(parseISO(despesa.created_at), 'dd/MM/yyyy')}
-                  </TableCell>
-                  <TableCell>{despesa.category}</TableCell>
-                  <TableCell className="text-right">
-                    {despesa.value.toLocaleString('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL',
-                    })}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter>
-              <TableRow>
-                <TableCell colSpan={3}>Total</TableCell>
-                <TableCell className="text-right font-bold">
-                  {totalDespesas.toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  })}
-                </TableCell>
-              </TableRow>
-            </TableFooter>
-          </Table>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

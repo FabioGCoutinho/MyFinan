@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useIsMobile } from '@/hooks/use-mobile'
 import type {
   CreditCardExpense,
   CreditCard as CreditCardType,
@@ -40,7 +41,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -150,21 +151,6 @@ const stagger = {
   animate: {
     transition: { staggerChildren: 0.08 },
   },
-}
-
-// ── Hooks ──────────────────────────────────────────────
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const checkIsMobile = () => setIsMobile(window.innerWidth < 768)
-    checkIsMobile()
-    window.addEventListener('resize', checkIsMobile)
-    return () => window.removeEventListener('resize', checkIsMobile)
-  }, [])
-
-  return isMobile
 }
 
 // ── Helpers ────────────────────────────────────────────
@@ -707,7 +693,7 @@ export function Overview({
               <CardContent className="pl-2">
                 <ChartContainer
                   config={chartConfig}
-                  className="min-h-[200px] w-full"
+                  className="min-h-[150px] w-full"
                 >
                   {isMobile ? (
                     <AreaChart accessibilityLayer data={kpiUser}>
@@ -789,6 +775,7 @@ export function Overview({
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
+                        width={80}
                         tickFormatter={value => `R$ ${value}`}
                         domain={[
                           0,

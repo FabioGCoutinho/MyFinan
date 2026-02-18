@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { CreditCardVisual } from '@/components/ui/credit-card-visual'
 import { Header } from '@/components/ui/header'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,6 +27,7 @@ import type { CreditCard } from '@/lib/credit-card'
 import { createClient } from '@/util/supabase/client'
 import { AlertDialog } from '@radix-ui/react-alert-dialog'
 import type { User } from '@supabase/supabase-js'
+import { addMonths } from 'date-fns'
 import { CreditCard as CreditCardIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import PulseLoader from 'react-spinners/PulseLoader'
@@ -41,10 +43,15 @@ export default function NovoGastoCartao() {
   const [category, setCategory] = useState('')
   const [date, setDate] = useState('')
   const [obs, setObs] = useState('')
+  const [qtd_parcelas, setQtdParcelas] = useState<number>(1)
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
   const [isDisabled, setIsDisabled] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  const selectedCard = useMemo(() => {
+    return cards.find(c => String(c.id) === cardId)
+  }, [cards, cardId])
 
   useEffect(() => {
     const init = async () => {
@@ -89,7 +96,44 @@ export default function NovoGastoCartao() {
       return
     }
 
+    if (
+      category === 'Compras parceladas' &&
+      (!qtd_parcelas || qtd_parcelas < 1)
+    ) {
+      setError('Informe a quantidade de parcelas.')
+      return
+    }
+
     setIsDisabled(true)
+
+    if (category === 'Compras parceladas') {
+      try {
+        const baseDate = new Date(date)
+        const records = Array.from({ length: qtd_parcelas }, (_, i) => ({
+          card_id: Number(cardId),
+          description: `${description} - Parcela ${i + 1}/${qtd_parcelas}`,
+          value: value / qtd_parcelas,
+          category,
+          created_at: addMonths(baseDate, i).toISOString(),
+          obs,
+          user_id: user?.id,
+        }))
+
+        const { error } = await supabase
+          .from('credit_card_expense')
+          .insert(records)
+
+        if (error) throw error
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      } catch (err: any) {
+        setError(err?.message)
+        setIsDisabled(false)
+        return
+      }
+      await revalidateAfterCardAction()
+      setAlertShow(true)
+      return
+    }
 
     try {
       const { error } = await supabase.from('credit_card_expense').insert({
@@ -121,6 +165,7 @@ export default function NovoGastoCartao() {
     setDate('')
     setObs('')
     setCardId('')
+    setQtdParcelas(1)
     setAlertShow(false)
     setIsDisabled(false)
   }
@@ -149,110 +194,169 @@ export default function NovoGastoCartao() {
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Cadastre um cartão de crédito nas Configurações para registrar
-                gastos.
+                as despesas.
               </p>
             </CardContent>
           </Card>
+        ) : !selectedCard ? (
+          /* ── Etapa 1: selecionar o cartão ── */
+          <div className="w-full max-w-2xl mx-auto space-y-6">
+            <div className="text-center space-y-1">
+              <h2 className="text-2xl font-bold">Selecione o Cartão</h2>
+              <p className="text-sm text-muted-foreground">
+                Clique no cartão onde deseja registrar a despesa
+              </p>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2 justify-items-center">
+              {cards.map(card => (
+                <CreditCardVisual
+                  key={card.id}
+                  card={card}
+                  selectable
+                  selected={cardId === String(card.id)}
+                  onClick={() => setCardId(String(card.id))}
+                />
+              ))}
+            </div>
+          </div>
         ) : (
-          <Card className="w-full max-w-lg mx-auto">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-center">
-                Gasto no Cartão
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="card">Cartão</Label>
-                  <Select onValueChange={setCardId} value={cardId} required>
-                    <SelectTrigger id="card">
-                      <SelectValue placeholder="Selecione o cartão" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cards.map(card => (
-                        <SelectItem key={card.id} value={String(card.id)}>
-                          {card.name} — {card.bank} ****{card.last_digits}
+          /* ── Etapa 2: formulário de despesa ── */
+          <div className="w-full max-w-lg mx-auto space-y-6">
+            {/* Card selecionado (mini preview clicável para trocar) */}
+            <div className="flex flex-col items-center gap-2">
+              <CreditCardVisual
+                card={selectedCard}
+                className="max-w-[280px]"
+                selected
+              />
+              <button
+                type="button"
+                onClick={() => setCardId('')}
+                className="text-xs text-brand hover:underline"
+              >
+                Trocar cartão
+              </button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold text-center">
+                  Despesa no Cartão
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Titulo</Label>
+                    <Input
+                      id="description"
+                      placeholder="Nome da despesa"
+                      value={description}
+                      onChange={e => setDescription(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Valor</Label>
+                    <Input
+                      id="price"
+                      placeholder="R$ 0,00"
+                      value={valor}
+                      onChange={handleValorChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Data da compra</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={date}
+                      onChange={e => setDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Categoria</Label>
+                    <Select
+                      onValueChange={setCategory}
+                      value={category}
+                      required
+                    >
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Selecione uma categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Alimentação">Alimentação</SelectItem>
+                        <SelectItem value="Compras parceladas">
+                          Compras parceladas
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Input
-                    id="description"
-                    placeholder="Nome do gasto"
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Valor</Label>
-                  <Input
-                    id="price"
-                    placeholder="R$ 0,00"
-                    value={valor}
-                    onChange={handleValorChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">Data da compra</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={e => setDate(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Categoria</Label>
-                  <Select onValueChange={setCategory} value={category} required>
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Alimentação">Alimentação</SelectItem>
-                      <SelectItem value="Contas">Contas</SelectItem>
-                      <SelectItem value="Dívidas">Dívidas</SelectItem>
-                      <SelectItem value="Doações">Doações</SelectItem>
-                      <SelectItem value="Educação">Educação</SelectItem>
-                      <SelectItem value="Impostos">Impostos</SelectItem>
-                      <SelectItem value="Lazer">Lazer</SelectItem>
-                      <SelectItem value="Moradia">Moradia</SelectItem>
-                      <SelectItem value="Saúde">Saúde</SelectItem>
-                      <SelectItem value="Transporte">Transporte</SelectItem>
-                      <SelectItem value="Vestuário">Vestuário</SelectItem>
-                      <SelectItem value="Outros">Outros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="obs">Observação</Label>
-                  <Textarea
-                    id="obs"
-                    placeholder="Adicione uma observação (opcional)"
-                    value={obs}
-                    onChange={e => setObs(e.target.value)}
-                  />
-                </div>
-                {error && <p className="text-sm text-danger">{error}</p>}
-                <Button
-                  type="submit"
-                  className="w-full bg-button text-button-foreground hover:bg-brand/80"
-                  disabled={isDisabled}
-                >
-                  {isDisabled ? (
-                    <PulseLoader color="#fff" />
-                  ) : (
-                    'Cadastrar Gasto'
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                        <SelectItem value="Contas">Contas</SelectItem>
+                        <SelectItem value="Dívidas">Dívidas</SelectItem>
+                        <SelectItem value="Doações">Doações</SelectItem>
+                        <SelectItem value="Educação">Educação</SelectItem>
+                        <SelectItem value="Impostos">Impostos</SelectItem>
+                        <SelectItem value="Lazer">Lazer</SelectItem>
+                        <SelectItem value="Moradia">Moradia</SelectItem>
+                        <SelectItem value="Saúde">Saúde</SelectItem>
+                        <SelectItem value="Transporte">Transporte</SelectItem>
+                        <SelectItem value="Vestuário">Vestuário</SelectItem>
+                        <SelectItem value="Outros">Outros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div
+                    className={`space-y-2 ${category === 'Compras parceladas' ? '' : 'hidden'}`}
+                  >
+                    <Label htmlFor="qtd_parcelas">Quantidade de Parcelas</Label>
+                    <Input
+                      id="qtd_parcelas"
+                      type="number"
+                      value={qtd_parcelas}
+                      onChange={e => setQtdParcelas(Number(e.target.value))}
+                      required
+                    />
+                  </div>
+                  <div
+                    className={`space-y-2 ${category === 'Compras parceladas' ? '' : 'hidden'}`}
+                  >
+                    <Label htmlFor="valor_parcelas">Valor da Parcela</Label>
+                    <Input
+                      id="valor_parcelas"
+                      value={(value / qtd_parcelas).toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                      disabled
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="obs">Observação</Label>
+                    <Textarea
+                      id="obs"
+                      placeholder="Adicione uma observação (opcional)"
+                      value={obs}
+                      onChange={e => setObs(e.target.value)}
+                    />
+                  </div>
+                  {error && <p className="text-sm text-danger">{error}</p>}
+                  <Button
+                    type="submit"
+                    className="w-full bg-button text-button-foreground hover:bg-brand/80"
+                    disabled={isDisabled}
+                  >
+                    {isDisabled ? (
+                      <PulseLoader color="#fff" />
+                    ) : (
+                      'Cadastrar Despesa'
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         <AlertDialog open={alertShow} onOpenChange={closeModal}>
@@ -260,7 +364,7 @@ export default function NovoGastoCartao() {
             <AlertDialogHeader>
               <AlertDialogTitle>Sucesso!</AlertDialogTitle>
               <AlertDialogDescription>
-                O gasto &quot;{description}&quot; foi registrado no cartão!
+                A despesa &quot;{description}&quot; foi registrada no cartão!
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

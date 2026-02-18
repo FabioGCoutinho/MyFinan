@@ -94,29 +94,25 @@ export default function Despesas() {
 
     setIsDisabled(true)
 
-    // Se for compras parceladas, executa o for para fazer na quantidade de meses referente a qtd de parcelas
+    // Se for compras parceladas, cria todos os registros de uma vez
     if (category === 'Compras parceladas') {
-      let currentDate = new Date(date) // Cria uma cópia da data original
+      try {
+        const baseDate = new Date(date)
+        const records = Array.from({ length: qtd_parcelas }, (_, i) => ({
+          expense: `${expense} - Parcela ${i + 1}/${qtd_parcelas}`,
+          value: value / qtd_parcelas,
+          created_at: addMonths(baseDate, i).toISOString(),
+          category,
+          obs,
+          user_id: user?.id,
+        }))
 
-      for (let i = 1; i <= qtd_parcelas; i++) {
-        try {
-          const { data, error } = await supabase.from('expense').insert({
-            expense: `${expense} - Parcela ${i}/${qtd_parcelas}`,
-            value: value / qtd_parcelas,
-            created_at: currentDate.toISOString(), // Usa a data atual
-            category,
-            obs,
-            user_id: user?.id,
-          })
+        const { error } = await supabase.from('expense').insert(records)
 
-          if (error) throw error
-
-          // Adiciona 1 mês à data para a próxima parcela
-          currentDate = addMonths(currentDate, 1)
-          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        } catch (error: any) {
-          setError(error?.message)
-        }
+        if (error) throw error
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      } catch (error: any) {
+        setError(error?.message)
       }
       await revalidateAfterInsert()
       setAlertShow(true)

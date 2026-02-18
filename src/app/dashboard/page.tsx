@@ -2,11 +2,21 @@ import { revalidateDashboard } from '@/components/actions'
 import { Header } from '@/components/ui/header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createClient } from '@/util/supabase/server'
-import { Expense } from './expense'
-import { Overview } from './overview'
-import { Relatorio } from './relatorio'
-import { Revenue } from './revenue'
+import dynamic from 'next/dynamic'
 import { buildFinancialHistory } from './utils'
+
+const Overview = dynamic(() =>
+  import('./overview').then(m => ({ default: m.Overview }))
+)
+const Expense = dynamic(() =>
+  import('./expense').then(m => ({ default: m.Expense }))
+)
+const Revenue = dynamic(() =>
+  import('./revenue').then(m => ({ default: m.Revenue }))
+)
+const Relatorio = dynamic(() =>
+  import('./relatorio').then(m => ({ default: m.Relatorio }))
+)
 
 // ── Layout wrapper para evitar duplicação ──────────────
 
@@ -114,7 +124,7 @@ export default async function DashboardPage() {
             />
           </TabsContent>
           <TabsContent value="relatorio" className="space-y-4">
-            <Relatorio revenue={revenues} expense={expenses} />
+            <Relatorio kpiUser={kpiUser} />
           </TabsContent>
         </Tabs>
       </PageShell>

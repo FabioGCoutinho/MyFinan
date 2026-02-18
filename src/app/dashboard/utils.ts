@@ -10,7 +10,7 @@ interface FinancialItem {
   created_at: string
 }
 
-interface MonthlyHistory {
+export interface MonthlyHistory {
   month: string
   monthIndex: number
   year: number

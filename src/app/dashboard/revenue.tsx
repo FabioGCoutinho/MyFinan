@@ -33,6 +33,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { createClient } from '@/util/supabase/client'
 import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -42,7 +43,7 @@ import {
   ChevronRightIcon,
   Trash2,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 interface ChildComponentProps {
   revenue: {
@@ -57,32 +58,18 @@ interface ChildComponentProps {
   onActionCompleted: () => void
 }
 
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const checkIsMobile = () => setIsMobile(window.innerWidth < 768)
-    checkIsMobile()
-    window.addEventListener('resize', checkIsMobile)
-    return () => window.removeEventListener('resize', checkIsMobile)
-  }, [])
-
-  return isMobile
-}
-
 export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
   const supabase = useMemo(() => createClient(), [])
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
   const [categoria, setCategoria] = useState('Todas')
-  const [receitasFiltradas, setReceitasFiltradas] = useState(revenue)
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
   const isMobile = useIsMobile()
 
-  useEffect(() => {
-    const filteredRevenue = revenue
+  const receitasFiltradas = useMemo(() => {
+    return revenue
       .filter(receitas => {
         const receitasDate = parseISO(receitas.created_at)
         return (
@@ -94,10 +81,8 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
       .sort((a, b) => {
         const dateA = parseISO(a.created_at).getTime()
         const dateB = parseISO(b.created_at).getTime()
-        return dateA - dateB // Ordem decrescente
+        return dateA - dateB
       })
-
-    setReceitasFiltradas(filteredRevenue)
   }, [date, categoria, revenue])
 
   const handlePreviousMonth = () => {

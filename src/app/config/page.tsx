@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { CreditCardVisual } from '@/components/ui/credit-card-visual'
 import { Header } from '@/components/ui/header'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -542,34 +543,25 @@ function CreditCardSection({ userId }: { userId: string }) {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : cards.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2 justify-items-center">
           {cards.map(card => (
-            <Card key={card.id}>
-              <CardContent className="flex items-center justify-between pt-6">
-                <div className="space-y-1">
-                  <p className="font-semibold">{card.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {card.bank} · {brandLabels[card.brand] || card.brand} · ****
-                    {card.last_digits}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Vencimento: dia {card.due_day} · Fechamento: dia{' '}
-                    {card.closing_day}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-danger hover:bg-danger/10"
-                  onClick={() => {
-                    setDeleteCardId(card.id)
-                    setShowDeleteDialog(true)
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
+            <div
+              key={card.id}
+              className="relative group w-full flex flex-col items-center"
+            >
+              <CreditCardVisual card={card} />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-danger text-danger-foreground hover:bg-danger/90 rounded-full h-8 w-8 shadow-lg z-30"
+                onClick={() => {
+                  setDeleteCardId(card.id)
+                  setShowDeleteDialog(true)
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           ))}
         </div>
       ) : (
