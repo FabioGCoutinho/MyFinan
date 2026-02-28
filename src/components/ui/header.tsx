@@ -7,95 +7,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Bell, Menu, Moon, Sun } from 'lucide-react'
+import { Bell, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import Link from 'next/link'
 import { Button } from './button'
+
 export function Header() {
-  const { setTheme, theme } = useTheme()
+  const { setTheme } = useTheme()
 
   return (
-    <header className="flex w-full h-14 lg:h-[60px] items-center gap-4 border-b bg-background px-6">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild className="lg:hidden">
-          <Button variant="ghost" size="icon">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Alternar menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[200px]">
-          <DropdownMenuItem>
-            <Link href="/dashboard">Visão Geral</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/despesas">Adicionar Despesas</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/receita">Adicionar Receitas</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/cartao/novo">Gasto no Cartão</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/cartao">Gastos no Cartão</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/config">Configurações</Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <nav className="flex-1">
-        <ul className="hidden lg:flex gap-4">
-          <li>
-            <Link
-              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
-              href="/dashboard"
-            >
-              Visão Geral
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
-              href="/despesas"
-            >
-              Adicionar Despesas
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
-              href="/receita"
-            >
-              Adicionar Receitas
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
-              href="/cartao/novo"
-            >
-              Gasto no Cartão
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
-              href="/cartao"
-            >
-              Gastos no Cartão
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="text-sm font-medium hover:underline hover:text-brand underline-offset-4"
-              href="/config"
-            >
-              Configurações
-            </Link>
-          </li>
-        </ul>
-      </nav>
+    <header className="flex w-full h-14 lg:h-[60px] items-center justify-end gap-4 border-b bg-background px-6">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon">
           <Bell className="h-4 w-4" />

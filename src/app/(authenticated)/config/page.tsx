@@ -18,7 +18,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CreditCardVisual } from '@/components/ui/credit-card-visual'
-import { Header } from '@/components/ui/header'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -700,64 +699,49 @@ export default function ConfigPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center min-h-dvh">
-        <Header />
-        <main className="flex flex-col lg:w-3/4 md:w-5/6 w-full space-y-4 p-2 md:p-8 pt-6">
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        </main>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   if (!user) {
-    return (
-      <div className="flex flex-col items-center min-h-dvh">
-        <Header />
-        <main className="flex flex-col lg:w-3/4 md:w-5/6 w-full space-y-4 p-2 md:p-8 pt-6">
-          <p>Erro ao carregar dados do usuário</p>
-        </main>
-      </div>
-    )
+    return <p>Erro ao carregar dados do usuário</p>
   }
 
   return (
-    <div className="flex flex-col items-center min-h-dvh">
-      <Header />
-      <main className="flex flex-col lg:w-3/4 md:w-5/6 w-full space-y-4 p-2 md:p-8 pt-6">
-        <div className="w-full space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Configurações</h2>
-          <p className="text-muted-foreground">
-            Gerencie seu perfil, segurança e preferências.
-          </p>
-        </div>
+    <div className="flex flex-col space-y-4">
+      <div className="w-full space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Configurações</h2>
+        <p className="text-muted-foreground">
+          Gerencie seu perfil, segurança e preferências.
+        </p>
+      </div>
 
-        <Tabs defaultValue="profile" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
-            <TabsTrigger value="security">Segurança</TabsTrigger>
-            <TabsTrigger value="cards">Cartões</TabsTrigger>
-            <TabsTrigger value="appearance">Aparência</TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="profile" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="profile">Perfil</TabsTrigger>
+          <TabsTrigger value="security">Segurança</TabsTrigger>
+          <TabsTrigger value="cards">Cartões</TabsTrigger>
+          <TabsTrigger value="appearance">Aparência</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="profile" className="space-y-4">
-            <ProfileSection user={user} />
-          </TabsContent>
+        <TabsContent value="profile" className="space-y-4">
+          <ProfileSection user={user} />
+        </TabsContent>
 
-          <TabsContent value="security" className="space-y-4">
-            <SecuritySection user={user} />
-          </TabsContent>
+        <TabsContent value="security" className="space-y-4">
+          <SecuritySection user={user} />
+        </TabsContent>
 
-          <TabsContent value="cards" className="space-y-4">
-            <CreditCardSection userId={user.id} />
-          </TabsContent>
+        <TabsContent value="cards" className="space-y-4">
+          <CreditCardSection userId={user.id} />
+        </TabsContent>
 
-          <TabsContent value="appearance" className="space-y-4">
-            <AppearanceSection />
-          </TabsContent>
-        </Tabs>
-      </main>
+        <TabsContent value="appearance" className="space-y-4">
+          <AppearanceSection />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

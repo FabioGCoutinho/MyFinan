@@ -1,5 +1,4 @@
 import { revalidateDashboard } from '@/components/actions'
-import { Header } from '@/components/ui/header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createClient } from '@/util/supabase/server'
 import dynamic from 'next/dynamic'
@@ -17,19 +16,6 @@ const Revenue = dynamic(() =>
 const Relatorio = dynamic(() =>
   import('./relatorio').then(m => ({ default: m.Relatorio }))
 )
-
-// ── Layout wrapper para evitar duplicação ──────────────
-
-function PageShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col items-center min-h-dvh">
-      <Header />
-      <main className="flex flex-col xl:w-3/4 w-full space-y-4 p-2 md:p-8 pt-6">
-        {children}
-      </main>
-    </div>
-  )
-}
 
 // ── Busca de dados ─────────────────────────────────────
 
@@ -71,11 +57,7 @@ export default async function DashboardPage() {
 
   if (!user || userError) {
     console.error('No user found', userError)
-    return (
-      <PageShell>
-        <p>Erro ao carregar dados do usuário</p>
-      </PageShell>
-    )
+    return <p>Erro ao carregar dados do usuário</p>
   }
 
   try {
@@ -89,7 +71,7 @@ export default async function DashboardPage() {
     )
 
     return (
-      <PageShell>
+      <div className="flex flex-col xl:w-3/4 w-full mx-auto space-y-4">
         <div className="w-full space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Painel</h2>
         </div>
@@ -127,17 +109,13 @@ export default async function DashboardPage() {
             <Relatorio kpiUser={kpiUser} />
           </TabsContent>
         </Tabs>
-      </PageShell>
+      </div>
     )
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred'
     console.error(message)
 
-    return (
-      <PageShell>
-        <p>Erro ao carregar dados financeiros</p>
-      </PageShell>
-    )
+    return <p>Erro ao carregar dados financeiros</p>
   }
 }
