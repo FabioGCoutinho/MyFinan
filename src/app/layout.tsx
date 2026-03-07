@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ThemeProvider } from 'next-themes'
 import localFont from 'next/font/local'
 import './globals.css'
+import { GoogleAnalytics } from '@/components/google-analytics'
 import { Toaster } from '@/components/ui/toaster'
 
 const geistSans = localFont({
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <GoogleAnalytics />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           {children}
         </ThemeProvider>

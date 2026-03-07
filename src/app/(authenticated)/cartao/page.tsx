@@ -407,7 +407,17 @@ export default function CartaoPage() {
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={selectedCardId === 'all' ? 5 : 4}>
+                  <TableCell
+                    colSpan={
+                      selectedCardId === 'all'
+                        ? isMobile
+                          ? 4
+                          : 5
+                        : isMobile
+                          ? 4
+                          : 4
+                    }
+                  >
                     Total
                   </TableCell>
                   <TableCell className="text-right font-bold">
