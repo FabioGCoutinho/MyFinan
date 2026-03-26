@@ -190,7 +190,7 @@ export default function Receitas() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction className="w-full text-brand-foreground hover:bg-brand/80">
+            <AlertDialogAction className="w-full bg-button text-button-foreground hover:bg-button/80">
               Continue
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,4 +1,4 @@
-import { getInvoicePeriod } from '@/lib/credit-card'
+import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
 import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
 
 function capitalizeFirstLetter(str: string): string {
@@ -80,10 +80,11 @@ export function buildFinancialHistory(
   // Somar faturas de cartão de crédito
   for (const card of creditCards) {
     for (const entry of Array.from(historyMap.values())) {
-      const { start, end } = getInvoicePeriod(
+      const { start, end } = getInvoicePeriodByDueMonth(
         entry.fullDate.getFullYear(),
         entry.fullDate.getMonth(),
-        card.closing_day
+        card.closing_day,
+        card.due_day
       )
       const cardTotal = creditCardExpenses
         .filter(exp => {

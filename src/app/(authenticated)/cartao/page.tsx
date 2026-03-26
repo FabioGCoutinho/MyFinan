@@ -37,7 +37,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
 import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
-import { getInvoicePeriod } from '@/lib/credit-card'
+import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
 import { createClient } from '@/util/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
@@ -110,7 +110,12 @@ export default function CartaoPage() {
       .filter(exp => {
         const card = targetCards.find(c => c.id === exp.card_id)
         if (!card) return false
-        const { start, end } = getInvoicePeriod(year, month, card.closing_day)
+        const { start, end } = getInvoicePeriodByDueMonth(
+          year,
+          month,
+          card.closing_day,
+          card.due_day
+        )
         const expDate = parseISO(exp.created_at)
         return expDate >= start && expDate <= end
       })
@@ -153,10 +158,11 @@ export default function CartaoPage() {
 
   const getInvoiceLabel = () => {
     if (selectedCard) {
-      const { start, end } = getInvoicePeriod(
+      const { start, end } = getInvoicePeriodByDueMonth(
         date.getFullYear(),
         date.getMonth(),
-        selectedCard.closing_day
+        selectedCard.closing_day,
+        selectedCard.due_day
       )
       return {
         period: `${format(start, 'dd/MM/yyyy')} a ${format(end, 'dd/MM/yyyy')}`,
@@ -275,10 +281,11 @@ export default function CartaoPage() {
             return (
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {info.cards.map(card => {
-                  const { start, end } = getInvoicePeriod(
+                  const { start, end } = getInvoicePeriodByDueMonth(
                     date.getFullYear(),
                     date.getMonth(),
-                    card.closing_day
+                    card.closing_day,
+                    card.due_day
                   )
                   const cardTotal = filteredExpenses
                     .filter(exp => exp.card_id === card.id)

@@ -19,7 +19,7 @@ import type {
   CreditCardExpense,
   CreditCard as CreditCardType,
 } from '@/lib/credit-card'
-import { getInvoicePeriod } from '@/lib/credit-card'
+import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
 import { formatCurrency, formatVariation } from '@/lib/utils'
 import { format, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -398,10 +398,11 @@ export function Overview({
   const cardInvoiceTotals = useMemo(() => {
     return creditCards
       .map(card => {
-        const { start, end } = getInvoicePeriod(
+        const { start, end } = getInvoicePeriodByDueMonth(
           selectedDate.getFullYear(),
           selectedDate.getMonth(),
-          card.closing_day
+          card.closing_day,
+          card.due_day
         )
         const total = creditCardExpenses
           .filter(exp => {
@@ -423,10 +424,11 @@ export function Overview({
   // Faturas do mês anterior (para variação)
   const totalCartaoAnterior = useMemo(() => {
     return creditCards.reduce((sum, card) => {
-      const { start, end } = getInvoicePeriod(
+      const { start, end } = getInvoicePeriodByDueMonth(
         previousMonth.getFullYear(),
         previousMonth.getMonth(),
-        card.closing_day
+        card.closing_day,
+        card.due_day
       )
       return (
         sum +

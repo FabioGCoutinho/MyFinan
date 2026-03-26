@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
 import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
-import { getInvoicePeriod } from '@/lib/credit-card'
+import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
 import { createClient } from '@/util/supabase/client'
 import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -83,10 +83,11 @@ export function Expense({
   const cardInvoiceTotals = useMemo(() => {
     return creditCards
       .map(card => {
-        const { start, end } = getInvoicePeriod(
+        const { start, end } = getInvoicePeriodByDueMonth(
           date.getFullYear(),
           date.getMonth(),
-          card.closing_day
+          card.closing_day,
+          card.due_day
         )
         const total = creditCardExpenses
           .filter(exp => {
