@@ -33,7 +33,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { MonthlyHistory } from './utils'
+import type { MonthlyHistory } from '../dashboard/utils'
 
 // ── Chart config ───────────────────────────────────────
 const chartConfig = {
