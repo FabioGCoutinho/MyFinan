@@ -34,6 +34,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
+import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
+import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
 import { createClient } from '@/util/supabase/client'
 import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -41,41 +43,78 @@ import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CreditCard as CreditCardIcon,
   Trash2,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 interface ChildComponentProps {
-  revenue: {
+  expense: {
     category: string
     created_at: string
     id: number
     obs: string
-    revenue: string
+    expense: string
     updated_at: Date
     value: number
   }[]
+  creditCards: CreditCard[]
+  creditCardExpenses: CreditCardExpense[]
   onActionCompleted: () => void
 }
 
-export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
+export function Expense({
+  expense,
+  creditCards,
+  creditCardExpenses,
+  onActionCompleted,
+}: ChildComponentProps) {
   const supabase = useMemo(() => createClient(), [])
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
-  const [categoria, setCategoria] = useState('Todas')
+  const [selectedCategory, setSelectedCategory] = useState('Todas')
   const [error, setError] = useState<string | null>(null)
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
   const isMobile = useIsMobile()
 
-  const receitasFiltradas = useMemo(() => {
-    return revenue
-      .filter(receitas => {
-        const receitasDate = parseISO(receitas.created_at)
+  // Calcular faturas de cartão para o mês selecionado
+  const cardInvoiceTotals = useMemo(() => {
+    return creditCards
+      .map(card => {
+        const { start, end } = getInvoicePeriodByDueMonth(
+          date.getFullYear(),
+          date.getMonth(),
+          card.closing_day,
+          card.due_day
+        )
+        const total = creditCardExpenses
+          .filter(exp => {
+            if (exp.card_id !== card.id) return false
+            const expDate = parseISO(exp.created_at)
+            return expDate >= start && expDate <= end
+          })
+          .reduce((sum, exp) => sum + Number(exp.value), 0)
+        return { card, total }
+      })
+      .filter(item => item.total > 0)
+  }, [creditCards, creditCardExpenses, date])
+
+  const totalCartao = useMemo(
+    () => cardInvoiceTotals.reduce((sum, item) => sum + item.total, 0),
+    [cardInvoiceTotals]
+  )
+
+  const despesasFiltradas = useMemo(() => {
+    return expense
+      .filter(despesa => {
+        const despesaDate = parseISO(despesa.created_at)
         return (
-          receitasDate.getMonth() === date.getMonth() &&
-          receitasDate.getFullYear() === date.getFullYear() &&
-          (categoria === 'Todas' || receitas.category === categoria)
+          despesaDate.getMonth() === date.getMonth() &&
+          despesaDate.getFullYear() === date.getFullYear() &&
+          (selectedCategory === 'Todas' ||
+            despesa.category === selectedCategory)
         )
       })
       .sort((a, b) => {
@@ -83,7 +122,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
         const dateB = parseISO(b.created_at).getTime()
         return dateA - dateB
       })
-  }, [date, categoria, revenue])
+  }, [date, selectedCategory, expense])
 
   const handlePreviousMonth = () => {
     setDate(prevDate => startOfMonth(subMonths(prevDate, 1)))
@@ -98,15 +137,16 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
     setSelectedId(id)
   }
 
-  const handleDeledRevenue = async () => {
+  const handleDeledExpense = async () => {
     //Realiza a exclusão dos dados no banco de dados
     try {
       const response = await supabase
-        .from('revenue')
+        .from('expense')
         .delete()
         .eq('id', selectedId)
 
-      console.log(response)
+      // console.log(response)
+
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     } catch (error: any) {
       setError(error?.message)
@@ -120,7 +160,15 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
 
   return (
     <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-6">Receitas</h1>
+      <div className="w-full flex items-center gap-4 mb-4">
+        <h2 className="text-3xl font-bold tracking-tight">Despesas</h2>
+        <Button
+          asChild
+          className="bg-button text-button-foreground hover:bg-brand/80"
+        >
+          <Link href="/despesas/novo">Nova Transação</Link>
+        </Button>
+      </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
         <div className="flex items-center space-x-2">
@@ -140,17 +188,23 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
           </Button>
         </div>
 
-        <Select value={categoria} onValueChange={setCategoria}>
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-full md:w-[180px]">
-            <SelectValue placeholder="Filtrar por categoria" />
+            <SelectValue placeholder="Filtrar por selectedCategory" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="Todas">Todas</SelectItem>
-            <SelectItem value="Salário">Salário</SelectItem>
-            <SelectItem value="Rendimentos">Rendimentos</SelectItem>
-            <SelectItem value="Freelance">Freelance</SelectItem>
-            <SelectItem value="Bônus">Bônus</SelectItem>
-            <SelectItem value="Vendas">Vendas</SelectItem>
+            <SelectItem value="Alimentação">Alimentação</SelectItem>
+            <SelectItem value="Contas">Contas</SelectItem>
+            <SelectItem value="Dívidas">Dívidas</SelectItem>
+            <SelectItem value="Doações">Doações</SelectItem>
+            <SelectItem value="Educação">Educação</SelectItem>
+            <SelectItem value="Impostos">Impostos</SelectItem>
+            <SelectItem value="Lazer">Lazer</SelectItem>
+            <SelectItem value="Moradia">Moradia</SelectItem>
+            <SelectItem value="Saúde">Saúde</SelectItem>
+            <SelectItem value="Transporte">Transporte</SelectItem>
+            <SelectItem value="Vestuário">Vestuário</SelectItem>
             <SelectItem value="Outros">Outros</SelectItem>
           </SelectContent>
         </Select>
@@ -168,13 +222,13 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {receitasFiltradas.map(receitas => (
-              <TableRow key={receitas.id}>
+            {despesasFiltradas.map(despesa => (
+              <TableRow key={despesa.id}>
                 <TableCell className="text-muted-foreground font-medium w-5">
                   <Button
                     variant="ghost"
                     className="py-0 px-2 hover:bg-brand hover:text-brand-foreground transform hover:scale-110"
-                    onClick={() => handleDeledComfim(receitas.id)}
+                    onClick={() => handleDeledComfim(despesa.id)}
                   >
                     <Trash2 size={16} />
                   </Button>
@@ -184,44 +238,80 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
                     <TooltipProvider>
                       <Tooltip delayDuration={isMobile ? 1000 : 0}>
                         <TooltipTrigger asChild>
-                          <span className="cursor-help">
-                            {receitas.revenue}
-                          </span>
+                          <span className="cursor-help">{despesa.expense}</span>
                         </TooltipTrigger>
                         <TooltipContent className="w-80 bg-surface text-surface-foreground">
                           <p className="font-semibold">Descrição:</p>
-                          <p>{receitas.obs}</p>
+                          <p>{despesa.obs}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                     <span className="text-sm text-muted-foreground md:hidden mt-1">
-                      {format(parseISO(receitas.created_at), 'dd/MM/yyyy')}
+                      {format(parseISO(despesa.created_at), 'dd/MM/yyyy')}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  {format(parseISO(receitas.created_at), 'dd/MM/yyyy')}
+                  {format(parseISO(despesa.created_at), 'dd/MM/yyyy')}
                 </TableCell>
-                <TableCell>{receitas.category}</TableCell>
+                <TableCell>{despesa.category}</TableCell>
                 <TableCell className="text-right">
-                  {receitas.value.toLocaleString('pt-BR', {
+                  {despesa.value.toLocaleString('pt-BR', {
                     style: 'currency',
                     currency: 'BRL',
                   })}
                 </TableCell>
               </TableRow>
             ))}
+            {/* Faturas de cartão */}
+            {(selectedCategory === 'Todas' || selectedCategory === 'Cartão') &&
+              cardInvoiceTotals.map(({ card, total }) => (
+                <TableRow key={`card-${card.id}`}>
+                  <TableCell className="text-muted-foreground font-medium w-5">
+                    <CreditCardIcon size={16} className="mx-2 text-info" />
+                  </TableCell>
+                  <TableCell colSpan={isMobile ? 2 : 0} className="font-medium">
+                    <Link
+                      href="/cartao"
+                      className="flex flex-col md:flex-row md:items-center hover:text-info transition-colors"
+                    >
+                      <span>Fatura {card.name}</span>
+                      <span className="text-sm text-muted-foreground md:hidden mt-1">
+                        ****{card.last_digits} · Venc. dia {card.due_day}
+                      </span>
+                    </Link>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">
+                    Venc. dia {card.due_day}
+                  </TableCell>
+                  <TableCell className="text-info font-medium">
+                    Cartão
+                  </TableCell>
+                  <TableCell className="text-right text-info font-medium">
+                    {total.toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    })}
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
           <TableFooter>
             <TableRow>
               <TableCell colSpan={4}>Total</TableCell>
               <TableCell className="text-right font-bold">
-                {receitasFiltradas
-                  .reduce((total, receitas) => total + receitas.value, 0)
-                  .toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  })}
+                {(
+                  despesasFiltradas.reduce(
+                    (total, despesa) => total + despesa.value,
+                    0
+                  ) +
+                  (selectedCategory === 'Todas' || selectedCategory === 'Cartão'
+                    ? totalCartao
+                    : 0)
+                ).toLocaleString('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                })}
               </TableCell>
             </TableRow>
           </TableFooter>
@@ -232,7 +322,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir</AlertDialogTitle>
             <AlertDialogDescription>
-              Confirmar a exclusão da receita?
+              Confirmar a exclusão da despesa?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -240,10 +330,10 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className=" text-brand-foreground hover:bg-brand/80"
-              onClick={() => handleDeledRevenue()}
+              className="bg-button text-button-foreground hover:bg-brand/80"
+              onClick={() => handleDeledExpense()}
             >
-              Continue
+              Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

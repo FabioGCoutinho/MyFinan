@@ -18,18 +18,23 @@ import { Button } from './button'
 const navLinks = [
   {
     href: '/dashboard',
-    label: 'Visão Geral',
+    label: 'Dashboard',
     icon: LayoutDashboard,
   },
   {
     href: '/despesas',
-    label: 'Adicionar Despesas',
+    label: 'Despesas',
     icon: MinusCircle,
   },
   {
-    href: '/receita',
-    label: 'Adicionar Receitas',
+    href: '/receitas',
+    label: 'Receitas',
     icon: PlusCircle,
+  },
+  {
+    href: '/relatorio',
+    label: 'Relatório',
+    icon: LayoutDashboard,
   },
   {
     href: '/cartao/novo',

@@ -565,14 +565,14 @@ export function Overview({
               </p>
               <div className="mt-6 flex gap-3">
                 <Link
-                  href="/receita"
+                  href="/receitas/novo"
                   className="inline-flex items-center gap-1.5 rounded-md bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:bg-success/80 transition-colors"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Adicionar Receita
                 </Link>
                 <Link
-                  href="/despesas"
+                  href="/despesas/novo"
                   className="inline-flex items-center gap-1.5 rounded-md bg-danger px-4 py-2 text-sm font-medium text-danger-foreground hover:bg-danger/80 transition-colors"
                 >
                   <PlusCircle className="h-4 w-4" />
@@ -821,7 +821,7 @@ export function Overview({
                         Nenhuma despesa registrada neste mês
                       </p>
                       <Link
-                        href="/despesas"
+                        href="/despesas/novo"
                         className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-brand/80 transition-colors"
                       >
                         <PlusCircle className="h-3.5 w-3.5" />
@@ -896,7 +896,7 @@ export function Overview({
                       Registre despesas para ver a distribuição por categoria
                     </p>
                     <Link
-                      href="/despesas"
+                      href="/despesas/novo"
                       className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-brand/80 transition-colors"
                     >
                       <PlusCircle className="h-3.5 w-3.5" />

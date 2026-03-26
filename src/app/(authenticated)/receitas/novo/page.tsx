@@ -26,7 +26,7 @@ import { createClient } from '@/util/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import { useEffect, useMemo, useState } from 'react'
 
-export default function Receitas() {
+export default function NovaReceitaPage() {
   const supabase = useMemo(() => createClient(), [])
   const [revenue, setRevenue] = useState('')
   const [valor, setValor] = useState('')
@@ -49,14 +49,10 @@ export default function Receitas() {
   }, [supabase])
 
   const formatarValor = (value: string) => {
-    // Remove todos os caracteres não numéricos
     const numero = value.replace(/\D/g, '')
-
-    // Converte para centavos
     const centavos = Number.parseInt(numero) / 100
     setValue(centavos)
 
-    // Formata o valor
     return centavos.toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
@@ -72,9 +68,9 @@ export default function Receitas() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Aqui você pode adicionar a lógica para enviar os dados do formulário
+
     try {
-      const { data, error } = await supabase.from('revenue').insert({
+      const { error } = await supabase.from('revenue').insert({
         revenue,
         value,
         created_at: date,
@@ -87,9 +83,8 @@ export default function Receitas() {
 
       await revalidateAfterInsert()
       setAlertShow(true)
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    } catch (error: any) {
-      setError(error?.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Erro desconhecido')
     }
   }
 
@@ -172,6 +167,7 @@ export default function Receitas() {
                 onChange={e => setObs(e.target.value)}
               />
             </div>
+            {error && <p className="text-sm text-danger">{error}</p>}
             <Button
               type="submit"
               className="w-full bg-button text-button-foreground hover:bg-brand/80"

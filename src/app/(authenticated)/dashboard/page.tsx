@@ -1,20 +1,9 @@
-import { revalidateDashboard } from '@/components/actions'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createClient } from '@/util/supabase/server'
 import dynamic from 'next/dynamic'
 import { buildFinancialHistory } from './utils'
 
 const Overview = dynamic(() =>
   import('./overview').then(m => ({ default: m.Overview }))
-)
-const Expense = dynamic(() =>
-  import('./expense').then(m => ({ default: m.Expense }))
-)
-const Revenue = dynamic(() =>
-  import('./revenue').then(m => ({ default: m.Revenue }))
-)
-const Relatorio = dynamic(() =>
-  import('./relatorio').then(m => ({ default: m.Relatorio }))
 )
 
 // ── Busca de dados ─────────────────────────────────────
@@ -73,42 +62,15 @@ export default async function DashboardPage() {
     return (
       <div className="flex flex-col xl:w-3/4 w-full mx-auto space-y-4">
         <div className="w-full space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Painel</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         </div>
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="expense">Despesas</TabsTrigger>
-            <TabsTrigger value="revenue">Receitas</TabsTrigger>
-            <TabsTrigger value="relatorio">Relatório</TabsTrigger>
-          </TabsList>
-          <TabsContent value="overview" className="space-y-4">
-            <Overview
-              revenue={revenues}
-              expense={expenses}
-              kpiUser={kpiUser}
-              creditCards={creditCards}
-              creditCardExpenses={creditCardExpenses}
-            />
-          </TabsContent>
-          <TabsContent value="expense" className="space-y-4">
-            <Expense
-              expense={expenses}
-              creditCards={creditCards}
-              creditCardExpenses={creditCardExpenses}
-              onActionCompleted={revalidateDashboard}
-            />
-          </TabsContent>
-          <TabsContent value="revenue" className="space-y-4">
-            <Revenue
-              revenue={revenues}
-              onActionCompleted={revalidateDashboard}
-            />
-          </TabsContent>
-          <TabsContent value="relatorio" className="space-y-4">
-            <Relatorio kpiUser={kpiUser} />
-          </TabsContent>
-        </Tabs>
+        <Overview
+          revenue={revenues}
+          expense={expenses}
+          kpiUser={kpiUser}
+          creditCards={creditCards}
+          creditCardExpenses={creditCardExpenses}
+        />
       </div>
     )
   } catch (error: unknown) {
