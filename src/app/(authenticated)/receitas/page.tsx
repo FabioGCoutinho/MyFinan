@@ -1,7 +1,5 @@
 import { revalidateDashboard } from '@/components/actions'
-import { Button } from '@/components/ui/button'
 import { createClient } from '@/util/supabase/server'
-import Link from 'next/link'
 import { Revenue } from './revenue'
 
 export default async function ReceitasPage() {

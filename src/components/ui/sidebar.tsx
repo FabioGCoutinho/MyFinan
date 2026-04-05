@@ -37,13 +37,8 @@ const navLinks = [
     icon: LayoutDashboard,
   },
   {
-    href: '/cartao/novo',
-    label: 'Gasto no Cartão',
-    icon: CreditCard,
-  },
-  {
     href: '/cartao',
-    label: 'Gastos no Cartão',
+    label: 'Cartão de Crédito',
     icon: CreditCardIcon,
   },
   {
@@ -83,14 +78,24 @@ export function Sidebar({ userInfo }: SidebarProps) {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo / Brand */}
-      <div className="flex items-center gap-2 px-4 h-14 lg:h-[60px] border-b shrink-0">
+      <div className="flex items-center justify-between px-4 h-14 lg:h-[60px] border-b shrink-0">
         <span className="text-xl font-bold text-brand">MyFinan</span>
+        {/* Close button – only visible on mobile inside the sidebar */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden h-8 w-8"
+          onClick={() => setOpen(false)}
+        >
+          <X className="h-5 w-5" />
+          <span className="sr-only">Fechar menu</span>
+        </Button>
       </div>
 
       {/* Navigation Links */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navLinks.map(link => {
-          const isActive = pathname === link.href
+          const isActive = pathname.includes(link.href)
           const Icon = link.icon
           return (
             <Link
@@ -136,16 +141,18 @@ export function Sidebar({ userInfo }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile toggle button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-3 left-3 z-50 lg:hidden"
-        onClick={() => setOpen(!open)}
-      >
-        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        <span className="sr-only">Alternar menu</span>
-      </Button>
+      {/* Mobile toggle button – only visible when sidebar is closed */}
+      {!open && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed top-3 left-3 z-50 lg:hidden"
+          onClick={() => setOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Abrir menu</span>
+        </Button>
+      )}
 
       {/* Mobile overlay */}
       {open && (

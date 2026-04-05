@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { signOut } from '@/components/actions'
 import {
   DropdownMenu,
@@ -13,9 +14,26 @@ import { Button } from './button'
 
 export function Header() {
   const { setTheme } = useTheme()
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10)
+    }
+    
+    handleScroll() // Trigger once on mount to check initial position
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   return (
-    <header className="flex w-full h-14 lg:h-[60px] items-center justify-end gap-4 border-b bg-background px-6">
+    <header 
+      className={`flex sticky top-0 z-30 w-full h-14 lg:h-[60px] items-center justify-end gap-4 px-6 transition-all duration-300 ${
+        scrolled 
+          ? 'bg-background/80 backdrop-blur-md border-b shadow-sm' 
+          : 'bg-background border-b'
+      }`}
+    >
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon">
           <Bell className="h-4 w-4" />
@@ -42,7 +60,7 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
-          className="bg-button text-button-foreground hover:bg-brand/80"
+          className="bg-button font-bold hover:bg-brand/80"
           onClick={() => signOut()}
         >
           Sair

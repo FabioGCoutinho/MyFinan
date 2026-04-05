@@ -1,6 +1,15 @@
 'use client'
 
 import {
+  Bar,
+  BarChart,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+} from 'recharts'
+
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -18,36 +27,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
 import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
 import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
+import { parseLocalDate } from '@/lib/utils'
 import { createClient } from '@/util/supabase/client'
-import { addMonths, format, parseISO, startOfMonth, subMonths } from 'date-fns'
+import { type ClassValue, clsx } from 'clsx'
+import {
+  addMonths,
+  format,
+  isSameMonth,
+  startOfMonth,
+  subMonths,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
-  CalendarIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  Banknote,
+  BookOpen,
+  Car,
+  ChevronLeft,
+  ChevronRight,
   CreditCard as CreditCardIcon,
+  Filter,
+  Gift,
+  HeartPulse,
+  Home,
+  Lightbulb,
+  Monitor,
+  PlusCircle,
+  ShieldAlert,
+  ShoppingBag,
+  SlidersHorizontal,
   Trash2,
+  TrendingDown,
+  TrendingUp,
+  Utensils,
+  Wallet,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { twMerge } from 'tailwind-merge'
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 
 interface ChildComponentProps {
   expense: {
@@ -64,6 +89,97 @@ interface ChildComponentProps {
   onActionCompleted: () => void
 }
 
+type SortField = 'descricao' | 'categoria' | 'data' | 'valor' | null
+type SortDirection = 'asc' | 'desc'
+
+type UnifiedExpenseItem =
+  | {
+      id: number
+      type: 'expense'
+      description: string
+      obs: string
+      category: string
+      date: string
+      value: number
+    }
+  | {
+      id: string
+      type: 'card'
+      description: string
+      obs: string
+      category: string
+      date: string
+      value: number
+    }
+
+const CategoryIcon = ({ category }: { category: string }) => {
+  switch (category) {
+    case 'Alimentação':
+      return (
+        <Utensils className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+      )
+    case 'Contas':
+      return (
+        <Lightbulb className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+      )
+    case 'Dívidas':
+      return <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400" />
+    case 'Doações':
+      return <Gift className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+    case 'Educação':
+      return <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+    case 'Lazer':
+      return (
+        <Monitor className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+      )
+    case 'Moradia':
+      return <Home className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+    case 'Saúde':
+      return (
+        <HeartPulse className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+      )
+    case 'Transporte':
+      return <Car className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+    case 'Vestuário':
+      return (
+        <ShoppingBag className="w-5 h-5 text-fuchsia-600 dark:text-fuchsia-400" />
+      )
+    case 'Cartão':
+      return <CreditCardIcon className="w-5 h-5 text-info" />
+    default:
+      return <Banknote className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+  }
+}
+
+const CategoryBg = ({ category }: { category: string }) => {
+  switch (category) {
+    case 'Alimentação':
+      return 'bg-orange-100 dark:bg-orange-900/30'
+    case 'Contas':
+      return 'bg-yellow-100 dark:bg-yellow-900/30'
+    case 'Dívidas':
+      return 'bg-red-100 dark:bg-red-900/30'
+    case 'Doações':
+      return 'bg-pink-100 dark:bg-pink-900/30'
+    case 'Educação':
+      return 'bg-blue-100 dark:bg-blue-900/30'
+    case 'Lazer':
+      return 'bg-purple-100 dark:bg-purple-900/30'
+    case 'Moradia':
+      return 'bg-indigo-100 dark:bg-indigo-900/30'
+    case 'Saúde':
+      return 'bg-emerald-100 dark:bg-emerald-900/30'
+    case 'Transporte':
+      return 'bg-teal-100 dark:bg-teal-900/30'
+    case 'Vestuário':
+      return 'bg-fuchsia-100 dark:bg-fuchsia-900/30'
+    case 'Cartão':
+      return 'bg-info/20 dark:bg-info/10'
+    default:
+      return 'bg-gray-100 dark:bg-gray-900/30'
+  }
+}
+
 export function Expense({
   expense,
   creditCards,
@@ -71,267 +187,733 @@ export function Expense({
   onActionCompleted,
 }: ChildComponentProps) {
   const supabase = useMemo(() => createClient(), [])
-  const [date, setDate] = useState<Date>(startOfMonth(new Date()))
-  const [selectedCategory, setSelectedCategory] = useState('Todas')
-  const [error, setError] = useState<string | null>(null)
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    format(startOfMonth(new Date()), 'yyyy-MM-dd')
+  )
+
+  const monthsList = useMemo(() => {
+    const center = parseLocalDate(selectedMonth)
+    return Array.from({ length: 5 }).map((_, i) => {
+      const d = addMonths(center, i - 2)
+      return {
+        date: startOfMonth(d),
+        value: format(startOfMonth(d), 'yyyy-MM-dd'),
+        label: format(d, 'MMM', { locale: ptBR }),
+      }
+    })
+  }, [selectedMonth])
+  const [categoria, setCategoria] = useState('Todas')
+  const [sortField, setSortField] = useState<SortField>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [expenseTarget, setExpenseTarget] = useState<number | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const isMobile = useIsMobile()
 
-  // Calcular faturas de cartão para o mês selecionado
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.user_metadata?.expense_target) {
+        setExpenseTarget(Number(user.user_metadata.expense_target))
+      }
+    })
+  }, [supabase])
+
+  // Process Invoices for Selected Month
   const cardInvoiceTotals = useMemo(() => {
+    const sDate = parseLocalDate(selectedMonth)
     return creditCards
       .map(card => {
         const { start, end } = getInvoicePeriodByDueMonth(
-          date.getFullYear(),
-          date.getMonth(),
+          sDate.getFullYear(),
+          sDate.getMonth(),
           card.closing_day,
           card.due_day
         )
         const total = creditCardExpenses
           .filter(exp => {
             if (exp.card_id !== card.id) return false
-            const expDate = parseISO(exp.created_at)
+            const expDate = parseLocalDate(exp.created_at)
             return expDate >= start && expDate <= end
           })
           .reduce((sum, exp) => sum + Number(exp.value), 0)
         return { card, total }
       })
       .filter(item => item.total > 0)
-  }, [creditCards, creditCardExpenses, date])
+  }, [creditCards, creditCardExpenses, selectedMonth])
 
-  const totalCartao = useMemo(
-    () => cardInvoiceTotals.reduce((sum, item) => sum + item.total, 0),
-    [cardInvoiceTotals]
-  )
+  // Process Invoices for Previous Month
+  const prevCardInvoiceTotals = useMemo(() => {
+    const sDate = parseLocalDate(selectedMonth)
+    const prevDate = subMonths(sDate, 1)
+    return creditCards
+      .map(card => {
+        const { start, end } = getInvoicePeriodByDueMonth(
+          prevDate.getFullYear(),
+          prevDate.getMonth(),
+          card.closing_day,
+          card.due_day
+        )
+        const total = creditCardExpenses
+          .filter(exp => {
+            if (exp.card_id !== card.id) return false
+            const expDate = parseLocalDate(exp.created_at)
+            return expDate >= start && expDate <= end
+          })
+          .reduce((sum, exp) => sum + Number(exp.value), 0)
+        return { card, total }
+      })
+      .filter(item => item.total > 0)
+  }, [creditCards, creditCardExpenses, selectedMonth])
 
-  const despesasFiltradas = useMemo(() => {
-    return expense
-      .filter(despesa => {
-        const despesaDate = parseISO(despesa.created_at)
+  const { currentMonthTotal, previousMonthTotal } = useMemo(() => {
+    const currentMonthDate = parseLocalDate(selectedMonth)
+    const previousMonthDate = subMonths(currentMonthDate, 1)
+
+    let current = 0
+    let previous = 0
+
+    for (const r of expense) {
+      const d = parseLocalDate(r.created_at)
+      if (
+        d.getFullYear() === currentMonthDate.getFullYear() &&
+        d.getMonth() === currentMonthDate.getMonth()
+      ) {
+        current += r.value
+      }
+      if (
+        d.getFullYear() === previousMonthDate.getFullYear() &&
+        d.getMonth() === previousMonthDate.getMonth()
+      ) {
+        previous += r.value
+      }
+    }
+
+    current += cardInvoiceTotals.reduce((sum, item) => sum + item.total, 0)
+    previous += prevCardInvoiceTotals.reduce((sum, item) => sum + item.total, 0)
+
+    return { currentMonthTotal: current, previousMonthTotal: previous }
+  }, [selectedMonth, expense, cardInvoiceTotals, prevCardInvoiceTotals])
+
+  const percentageChange =
+    previousMonthTotal === 0
+      ? currentMonthTotal > 0
+        ? 100
+        : 0
+      : ((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100
+
+  const categoryChartData = useMemo(() => {
+    const totals: Record<string, number> = {}
+    const sDate = parseLocalDate(selectedMonth)
+
+    // Despesas diretas do mês
+    for (const item of expense) {
+      const dDate = parseLocalDate(item.created_at)
+      if (
+        dDate.getMonth() === sDate.getMonth() &&
+        dDate.getFullYear() === sDate.getFullYear()
+      ) {
+        const cat = item.category.toUpperCase()
+        totals[cat] = (totals[cat] || 0) + item.value
+      }
+    }
+
+    // Despesas de cartão — usando a categoria real de cada despesa
+    for (const card of creditCards) {
+      const { start, end } = getInvoicePeriodByDueMonth(
+        sDate.getFullYear(),
+        sDate.getMonth(),
+        card.closing_day,
+        card.due_day
+      )
+      for (const exp of creditCardExpenses) {
+        if (exp.card_id !== card.id) continue
+        const expDate = parseLocalDate(exp.created_at)
+        if (expDate < start || expDate > end) continue
+        const cat = (exp.category || 'OUTROS').toUpperCase()
+        totals[cat] = (totals[cat] || 0) + Number(exp.value)
+      }
+    }
+
+    return Object.entries(totals)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10) // Top 10
+  }, [expense, creditCards, creditCardExpenses, selectedMonth])
+
+  const CHART_COLORS = ['#2563eb', '#14b8a6', '#64748b', '#cbd5e1']
+
+  const unifiedList = useMemo(() => {
+    const list: UnifiedExpenseItem[] = []
+
+    // Despesas normais
+    for (const despesa of expense) {
+      const dDate = parseLocalDate(despesa.created_at)
+      const sDate = parseLocalDate(selectedMonth)
+      if (
+        dDate.getMonth() === sDate.getMonth() &&
+        dDate.getFullYear() === sDate.getFullYear() &&
+        (categoria === 'Todas' || despesa.category === categoria)
+      ) {
+        list.push({
+          id: despesa.id,
+          type: 'expense',
+          description: despesa.expense,
+          obs: despesa.obs,
+          category: despesa.category,
+          date: despesa.created_at,
+          value: despesa.value,
+        })
+      }
+    }
+
+    // Faturas de Cartão
+    if (categoria === 'Todas' || categoria === 'Cartão') {
+      const sDate = parseLocalDate(selectedMonth)
+      for (const { card, total } of cardInvoiceTotals) {
+        // Mock a reasonable date for sorting (e.g. at the due day of the selected month)
+        const mockDate = new Date(
+          sDate.getFullYear(),
+          sDate.getMonth(),
+          card.due_day
+        )
+        list.push({
+          id: `card-${card.id}`,
+          type: 'card',
+          description: `Fatura ${card.name}`,
+          obs: `****${card.last_digits} · Venc. dia ${card.due_day}`,
+          category: 'Cartão',
+          date: mockDate.toISOString(),
+          value: total,
+        })
+      }
+    }
+
+    if (sortField) {
+      list.sort((a, b) => {
+        let aValue: string | number = 0
+        let bValue: string | number = 0
+        switch (sortField) {
+          case 'descricao':
+            aValue = a.description.toLowerCase()
+            bValue = b.description.toLowerCase()
+            break
+          case 'categoria':
+            aValue = a.category.toLowerCase()
+            bValue = b.category.toLowerCase()
+            break
+          case 'data':
+            aValue = parseLocalDate(a.date).getTime()
+            bValue = parseLocalDate(b.date).getTime()
+            break
+          case 'valor':
+            aValue = a.value
+            bValue = b.value
+            break
+        }
+
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      })
+    } else {
+      list.sort((a, b) => {
         return (
-          despesaDate.getMonth() === date.getMonth() &&
-          despesaDate.getFullYear() === date.getFullYear() &&
-          (selectedCategory === 'Todas' ||
-            despesa.category === selectedCategory)
+          parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()
         )
       })
-      .sort((a, b) => {
-        const dateA = parseISO(a.created_at).getTime()
-        const dateB = parseISO(b.created_at).getTime()
-        return dateA - dateB
-      })
-  }, [date, selectedCategory, expense])
+    }
 
-  const handlePreviousMonth = () => {
-    setDate(prevDate => startOfMonth(subMonths(prevDate, 1)))
+    return list
+  }, [
+    selectedMonth,
+    categoria,
+    expense,
+    cardInvoiceTotals,
+    sortField,
+    sortDirection,
+  ])
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
   }
 
-  const handleNextMonth = () => {
-    setDate(prevDate => startOfMonth(addMonths(prevDate, 1)))
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) return null
+    return sortDirection === 'asc' ? (
+      <ArrowUpIcon className="ml-1 w-4 h-4 inline" />
+    ) : (
+      <ArrowDownIcon className="ml-1 w-4 h-4 inline" />
+    )
   }
 
-  function handleDeledComfim(id: number) {
+  function handleDeledConfirm(id: number, type: string) {
+    if (type === 'card') return // Can't delete card invoice from here
     setAlertShow(true)
     setSelectedId(id)
   }
 
   const handleDeledExpense = async () => {
-    //Realiza a exclusão dos dados no banco de dados
     try {
-      const response = await supabase
-        .from('expense')
-        .delete()
-        .eq('id', selectedId)
-
-      // console.log(response)
-
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    } catch (error: any) {
-      setError(error?.message)
-      console.error(error?.message)
+      await supabase.from('expense').delete().eq('id', selectedId)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro inesperado'
+      setError(message)
+      console.error(message)
     }
 
     setAlertShow(false)
-    // Após a ação ser concluída, chame o callback para recarregar os dados
     onActionCompleted()
   }
 
+  // Progress Bar e Metas
+  const showProgress = expenseTarget !== null && expenseTarget > 0
+  const progressPercentage = showProgress
+    ? Math.min((currentMonthTotal / expenseTarget) * 100, 100)
+    : 100
+  const progressPercentText = showProgress
+    ? ((currentMonthTotal / expenseTarget) * 100).toFixed(1)
+    : '100'
+
+  // Pagination Logic
+  const itemsPerPage = isMobile ? 10 : 15
+  const totalPages = Math.max(1, Math.ceil(unifiedList.length / itemsPerPage))
+  const paginatedExpenses = unifiedList.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
   return (
     <div className="container mx-auto py-10">
-      <div className="w-full flex items-center gap-4 mb-4">
-        <h2 className="text-3xl font-bold tracking-tight">Despesas</h2>
-        <Button
-          asChild
-          className="bg-button text-button-foreground hover:bg-brand/80"
-        >
-          <Link href="/despesas/novo">Nova Transação</Link>
+      {/* Header */}
+      <div className="w-full flex items-center justify-between gap-4 mb-8">
+        <div>
+          <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">
+            Controle de Caixa
+          </p>
+          <h2 className="text-4xl font-extrabold tracking-tight mt-1">
+            Minhas Despesas
+          </h2>
+        </div>
+        <Button asChild className="px-6 font-semibold">
+          <Link href="/despesas/novo">
+            <PlusCircle className="mr-2 h-5 w-5 text-white" /> Nova Despesa
+          </Link>
         </Button>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" onClick={handlePreviousMonth}>
-            <ChevronLeftIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="w-[200px] justify-start text-left font-normal"
-            disabled
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {format(date, 'MMMM yyyy', { locale: ptBR })}
-          </Button>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}>
-            <ChevronRightIcon className="h-4 w-4" />
-          </Button>
+      {/* Hero Cards Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Left Card: Total e Orçamento */}
+        <div className="bg-card dark:bg-card/50 border rounded-2xl p-8 shadow-sm flex flex-col relative overflow-hidden">
+          <p className="text-muted-foreground font-bold mb-4">
+            Total Mensal (
+            <span className="capitalize">
+              {format(parseLocalDate(selectedMonth), 'MMMM yyyy', {
+                locale: ptBR,
+              })}
+            </span>
+            )
+          </p>
+          <div className="flex items-baseline gap-1 mb-6">
+            <span className="text-xl font-bold text-foreground">R$</span>
+            <h3 className="text-5xl font-black text-foreground">
+              {currentMonthTotal.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </h3>
+          </div>
+
+          <div className="mt-auto relative z-10">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                ORÇAMENTO UTILIZADO
+              </p>
+              <p className="font-bold text-foreground">
+                {showProgress ? `${progressPercentText}%` : 'N/A'}
+              </p>
+            </div>
+
+            <div className="w-full bg-secondary h-3 rounded-full overflow-hidden mb-3">
+              {showProgress && (
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all duration-500',
+                    progressPercentage > 90
+                      ? 'bg-destructive'
+                      : progressPercentage > 75
+                        ? 'bg-orange-500'
+                        : 'bg-[#14b8a6]'
+                  )}
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              )}
+            </div>
+
+            {showProgress ? (
+              <p className="text-xs text-muted-foreground font-medium w-3/4">
+                Você está{' '}
+                {currentMonthTotal > (expenseTarget || 0) ? 'acima' : 'dentro'}{' '}
+                da meta de R${' '}
+                {expenseTarget?.toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                })}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground font-medium">
+                Sem meta mensal configurada.
+              </p>
+            )}
+          </div>
+          <div className="absolute right-[-20px] bottom-[-20px] opacity-[0.03] pointer-events-none">
+            <Wallet className="w-48 h-48" />
+          </div>
         </div>
 
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-full md:w-[180px]">
-            <SelectValue placeholder="Filtrar por selectedCategory" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Todas">Todas</SelectItem>
-            <SelectItem value="Alimentação">Alimentação</SelectItem>
-            <SelectItem value="Contas">Contas</SelectItem>
-            <SelectItem value="Dívidas">Dívidas</SelectItem>
-            <SelectItem value="Doações">Doações</SelectItem>
-            <SelectItem value="Educação">Educação</SelectItem>
-            <SelectItem value="Impostos">Impostos</SelectItem>
-            <SelectItem value="Lazer">Lazer</SelectItem>
-            <SelectItem value="Moradia">Moradia</SelectItem>
-            <SelectItem value="Saúde">Saúde</SelectItem>
-            <SelectItem value="Transporte">Transporte</SelectItem>
-            <SelectItem value="Vestuário">Vestuário</SelectItem>
-            <SelectItem value="Outros">Outros</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Right Card: Gráfico */}
+        <div className="lg:col-span-2 bg-[#f0f4ff] dark:bg-card/50 border rounded-2xl p-8 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-bold text-xl text-slate-800 dark:text-slate-200">
+              Distribuição por Categoria
+            </h3>
+            <div className="flex bg-white dark:bg-slate-800 rounded-full p-1 shadow-sm">
+              <button
+                type="button"
+                className="px-4 py-1.5 text-sm font-bold text-[#2563eb] dark:text-[#3b82f6] bg-blue-50/50 dark:bg-slate-700 rounded-full"
+              >
+                Mensal
+              </button>
+              <button
+                type="button"
+                className="px-4 py-1.5 text-sm font-bold text-muted-foreground hover:text-foreground"
+              >
+                Semanal
+              </button>
+            </div>
+          </div>
+
+          <div className="w-full mt-auto">
+            <ResponsiveContainer width="100%" height={170}>
+              <BarChart data={categoryChartData} barSize={48}>
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }}
+                  dy={10}
+                />
+                <Tooltip
+                  cursor={{ fill: 'transparent' }}
+                  contentStyle={{
+                    borderRadius: '8px',
+                    border: 'none',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    backgroundColor: '#0a4881',
+                    color: '#fff',
+                  }}
+                  formatter={(value: number) =>
+                    value.toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    })
+                  }
+                />
+                <Bar dataKey="value" radius={[6, 6, 6, 6]}>
+                  {categoryChartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${entry.name}`}
+                      fill={CHART_COLORS[index % CHART_COLORS.length]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
-      <div className="rounded-md border overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-5"> </TableHead>
-              <TableHead colSpan={isMobile ? 2 : 0}>Nome</TableHead>
-              <TableHead className="hidden md:table-cell">Data</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {despesasFiltradas.map(despesa => (
-              <TableRow key={despesa.id}>
-                <TableCell className="text-muted-foreground font-medium w-5">
-                  <Button
-                    variant="ghost"
-                    className="py-0 px-2 hover:bg-brand hover:text-brand-foreground transform hover:scale-110"
-                    onClick={() => handleDeledComfim(despesa.id)}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                </TableCell>
-                <TableCell colSpan={isMobile ? 2 : 0} className="font-medium">
-                  <div className="flex flex-col md:flex-row md:items-center">
-                    <TooltipProvider>
-                      <Tooltip delayDuration={isMobile ? 1000 : 0}>
-                        <TooltipTrigger asChild>
-                          <span className="cursor-help">{despesa.expense}</span>
-                        </TooltipTrigger>
-                        <TooltipContent className="w-80 bg-surface text-surface-foreground">
-                          <p className="font-semibold">Descrição:</p>
-                          <p>{despesa.obs}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <span className="text-sm text-muted-foreground md:hidden mt-1">
-                      {format(parseISO(despesa.created_at), 'dd/MM/yyyy')}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {format(parseISO(despesa.created_at), 'dd/MM/yyyy')}
-                </TableCell>
-                <TableCell>{despesa.category}</TableCell>
-                <TableCell className="text-right">
-                  {despesa.value.toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  })}
-                </TableCell>
-              </TableRow>
+      {/* Filter Bar */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
+        <div className="space-y-3 w-full lg:w-auto">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Período de Referência
+          </p>
+          <div className="flex bg-surface border border-border rounded-full p-1.5 w-full lg:w-auto overflow-x-auto gap-1 shadow-sm">
+            {monthsList.map(m => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setSelectedMonth(m.value)}
+                className={cn(
+                  'px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap',
+                  selectedMonth === m.value
+                    ? 'bg-background shadow-sm text-foreground ring-1 ring-border'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                )}
+              >
+                <span className="capitalize">{m.label}</span>
+              </button>
             ))}
-            {/* Faturas de cartão */}
-            {(selectedCategory === 'Todas' || selectedCategory === 'Cartão') &&
-              cardInvoiceTotals.map(({ card, total }) => (
-                <TableRow key={`card-${card.id}`}>
-                  <TableCell className="text-muted-foreground font-medium w-5">
-                    <CreditCardIcon size={16} className="mx-2 text-info" />
-                  </TableCell>
-                  <TableCell colSpan={isMobile ? 2 : 0} className="font-medium">
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 w-full lg:w-auto">
+          <div className="flex flex-col space-y-3 w-full sm:w-auto">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              Filtrar por Categoria
+            </p>
+            <Select value={categoria} onValueChange={setCategoria}>
+              <SelectTrigger className="w-full sm:w-[220px] bg-surface rounded-full h-11 border-border font-medium shadow-sm">
+                <SelectValue placeholder="Todas Categorias" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todas">Todas Categorias</SelectItem>
+                <SelectItem value="Alimentação">Alimentação</SelectItem>
+                <SelectItem value="Contas">Contas</SelectItem>
+                <SelectItem value="Dívidas">Dívidas</SelectItem>
+                <SelectItem value="Doações">Doações</SelectItem>
+                <SelectItem value="Educação">Educação</SelectItem>
+                <SelectItem value="Impostos">Impostos</SelectItem>
+                <SelectItem value="Lazer">Lazer</SelectItem>
+                <SelectItem value="Moradia">Moradia</SelectItem>
+                <SelectItem value="Saúde">Saúde</SelectItem>
+                <SelectItem value="Transporte">Transporte</SelectItem>
+                <SelectItem value="Vestuário">Vestuário</SelectItem>
+                <SelectItem value="Cartão">Cartão (Faturas)</SelectItem>
+                <SelectItem value="Outros">Outros</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            variant="ghost"
+            type="button"
+            className="h-11 font-bold text-brand hover:bg-brand/10"
+            onClick={() => {
+              setCategoria('Todas')
+              setSelectedMonth(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
+            }}
+          >
+            <Filter className="w-4 h-4 mr-2" />
+            Limpar
+          </Button>
+        </div>
+      </div>
+
+      {/* List Headers */}
+      {!isMobile && (
+        <div className="grid grid-cols-[1fr_150px_120px_160px_60px] gap-4 px-6 py-3 mb-2 text-xs font-bold text-muted-foreground tracking-wider">
+          <button
+            type="button"
+            onClick={() => handleSort('descricao')}
+            className="text-left flex items-center hover:text-foreground transition-colors"
+          >
+            Descrição {renderSortIcon('descricao')}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSort('categoria')}
+            className="text-left flex items-center hover:text-foreground transition-colors"
+          >
+            Categoria {renderSortIcon('categoria')}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSort('data')}
+            className="text-left flex items-center hover:text-foreground transition-colors"
+          >
+            Data {renderSortIcon('data')}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSort('valor')}
+            className="text-right flex items-center justify-end hover:text-foreground transition-colors"
+          >
+            Valor {renderSortIcon('valor')}
+          </button>
+          <div className="text-center">Ação</div>
+        </div>
+      )}
+
+      {/* List Items */}
+      <div className="space-y-3">
+        {paginatedExpenses.length > 0 ? (
+          paginatedExpenses.map(item => (
+            <div
+              key={item.id}
+              className="bg-card border rounded-2xl p-4 sm:px-6 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:grid sm:grid-cols-[1fr_150px_120px_160px_60px] items-start sm:items-center gap-4 group"
+            >
+              {/* Descrição */}
+              <div className="flex items-center gap-4 w-full">
+                <div
+                  className={cn(
+                    'p-3 rounded-xl flex-shrink-0',
+                    CategoryBg({ category: item.category })
+                  )}
+                >
+                  <CategoryIcon category={item.category} />
+                </div>
+                <div className="min-w-0">
+                  {item.type === 'card' ? (
                     <Link
                       href="/cartao"
-                      className="flex flex-col md:flex-row md:items-center hover:text-info transition-colors"
+                      className="font-bold text-foreground truncate hover:text-info transition-colors block"
                     >
-                      <span>Fatura {card.name}</span>
-                      <span className="text-sm text-muted-foreground md:hidden mt-1">
-                        ****{card.last_digits} · Venc. dia {card.due_day}
-                      </span>
+                      {item.description}
                     </Link>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    Venc. dia {card.due_day}
-                  </TableCell>
-                  <TableCell className="text-info font-medium">
-                    Cartão
-                  </TableCell>
-                  <TableCell className="text-right text-info font-medium">
-                    {total.toLocaleString('pt-BR', {
+                  ) : (
+                    <p className="font-bold text-foreground truncate">
+                      {item.description}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground truncate max-w-[200px] xl:max-w-[400px]">
+                    {item.obs || 'Sem descrição'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="w-full grid grid-cols-2 gap-3 sm:contents">
+                {/* Categoria */}
+                <div className="w-full sm:w-auto flex items-center justify-between sm:block">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider sm:hidden">
+                    Categoria
+                  </span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize',
+                      item.type === 'card'
+                        ? 'bg-info/20 text-info'
+                        : 'bg-surface text-surface-foreground'
+                    )}
+                  >
+                    {item.category.toLowerCase()}
+                  </span>
+                </div>
+
+                {/* Data */}
+                <div className="w-full sm:w-auto flex items-center justify-between sm:block text-muted-foreground text-sm font-medium">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider sm:hidden">
+                    Data
+                  </span>
+                  {format(parseLocalDate(item.date), 'dd MMM, yyyy', {
+                    locale: ptBR,
+                  })}
+                </div>
+
+                {/* Valor */}
+                <div className="w-full sm:w-auto flex items-center justify-between sm:block text-left sm:text-right">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider sm:hidden">
+                    Valor
+                  </span>
+                  <span
+                    className={cn(
+                      'font-bold text-lg',
+                      item.type === 'card' ? 'text-info' : 'text-foreground'
+                    )}
+                  >
+                    {item.value.toLocaleString('pt-BR', {
                       style: 'currency',
                       currency: 'BRL',
                     })}
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-          <TableFooter>
-            <TableRow>
-              <TableCell colSpan={4}>Total</TableCell>
-              <TableCell className="text-right font-bold">
-                {(
-                  despesasFiltradas.reduce(
-                    (total, despesa) => total + despesa.value,
-                    0
-                  ) +
-                  (selectedCategory === 'Todas' || selectedCategory === 'Cartão'
-                    ? totalCartao
-                    : 0)
-                ).toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                })}
-              </TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
+                  </span>
+                </div>
+
+                {/* Ação */}
+                <div className="w-full sm:w-auto flex items-center justify-between sm:block sm:justify-center">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider sm:hidden">
+                    Ação
+                  </span>
+                  {item.type === 'card' ? (
+                    <div className="h-8 w-8" /> // Exibe vazio
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeledConfirm(item.id, item.type)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-12 bg-surface border rounded-2xl text-muted-foreground">
+            {expensesEmptyMessage(selectedMonth)}
+          </div>
+        )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 p-4 px-6 border border-border flex items-center justify-between bg-white dark:bg-card rounded-[24px]">
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Exibindo {paginatedExpenses.length} de {unifiedList.length}{' '}
+            lançamentos
+          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-medium text-muted-foreground">
+              Página {currentPage} de {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                type="button"
+                size="icon"
+                className="h-8 w-8 rounded-full shadow-sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                type="button"
+                size="icon"
+                className="h-8 w-8 rounded-full shadow-sm"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AlertDialog open={alertShow}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir</AlertDialogTitle>
+            <AlertDialogTitle>Excluir Despesa</AlertDialogTitle>
             <AlertDialogDescription>
-              Confirmar a exclusão da despesa?
+              Tem certeza que deseja excluir esta despesa permanentemente? Essa
+              ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setAlertShow(false)}>
-              Cancel
+              Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-button text-button-foreground hover:bg-brand/80"
-              onClick={() => handleDeledExpense()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeledExpense}
             >
               Excluir
             </AlertDialogAction>
@@ -340,4 +922,9 @@ export function Expense({
       </AlertDialog>
     </div>
   )
+}
+
+function expensesEmptyMessage(month: string) {
+  const d = parseLocalDate(month)
+  return `Nenhuma despesa encontrada em ${format(d, 'MMMM', { locale: ptBR })}.`
 }

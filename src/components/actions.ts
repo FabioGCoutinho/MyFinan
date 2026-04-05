@@ -99,7 +99,10 @@ export async function revalidateDashboard() {
   revalidatePath('/dashboard', 'page')
 }
 
-export async function updateProfile(displayName: string) {
+export async function updateProfile(
+  displayName: string,
+  expenseTarget?: number | null
+) {
   const supabase = await createClient()
 
   const {
@@ -110,8 +113,13 @@ export async function updateProfile(displayName: string) {
     return { success: false, message: 'Usuário não autenticado.' }
   }
 
+  const updateData: Record<string, any> = { full_name: displayName }
+  if (expenseTarget !== undefined) {
+    updateData.expense_target = expenseTarget
+  }
+
   const { error } = await supabase.auth.updateUser({
-    data: { full_name: displayName },
+    data: updateData,
   })
 
   if (error) {

@@ -20,8 +20,8 @@ import type {
   CreditCard as CreditCardType,
 } from '@/lib/credit-card'
 import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
-import { formatCurrency, formatVariation } from '@/lib/utils'
-import { format, parseISO, startOfMonth, subMonths } from 'date-fns'
+import { formatCurrency, formatVariation, parseLocalDate } from '@/lib/utils'
+import { format, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -33,9 +33,11 @@ import {
   DollarSign,
   type LucideIcon,
   Minus,
+  MinusCircle,
   PlusCircle,
   Receipt,
   Scale,
+  ShoppingBag,
   TrendingDown,
   Users,
   Wallet,
@@ -105,8 +107,6 @@ interface KpiCardProps {
   description: string
   icon: LucideIcon
   bgColor: string
-  sparklineData?: { value: number }[]
-  sparklineColor?: string
 }
 
 // ── Constantes ─────────────────────────────────────────
@@ -160,7 +160,7 @@ function filterByMonth<T extends { created_at: string }>(
   date: Date
 ): T[] {
   return items.filter(item => {
-    const d = parseISO(item.created_at)
+    const d = parseLocalDate(item.created_at)
     return (
       d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear()
     )
@@ -301,8 +301,6 @@ function KpiCard({
   description,
   icon: Icon,
   bgColor,
-  sparklineData,
-  sparklineColor = 'hsl(var(--brand))',
 }: KpiCardProps) {
   const VariationIcon = getVariationIcon(variation)
 
@@ -318,21 +316,6 @@ function KpiCard({
           <VariationIcon className="h-3 w-3" />
           {variation} {description}
         </p>
-        {sparklineData && sparklineData.length > 1 && (
-          <div className="mt-3 h-10 w-full overflow-hidden">
-            <ResponsiveContainer width="100%" height={40}>
-              <LineChart data={sparklineData}>
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke={sparklineColor}
-                  strokeWidth={1.5}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
       </CardContent>
     </Card>
   )
@@ -407,7 +390,7 @@ export function Overview({
         const total = creditCardExpenses
           .filter(exp => {
             if (exp.card_id !== card.id) return false
-            const expDate = parseISO(exp.created_at)
+            const expDate = parseLocalDate(exp.created_at)
             return expDate >= start && expDate <= end
           })
           .reduce((sum, exp) => sum + Number(exp.value), 0)
@@ -435,7 +418,7 @@ export function Overview({
         creditCardExpenses
           .filter(exp => {
             if (exp.card_id !== card.id) return false
-            const expDate = parseISO(exp.created_at)
+            const expDate = parseLocalDate(exp.created_at)
             return expDate >= start && expDate <= end
           })
           .reduce((s, exp) => s + Number(exp.value), 0)
@@ -467,14 +450,68 @@ export function Overview({
   // Variações calculadas
   const variacaoReceitas = formatVariation(totalReceitas, totalReceitasAnterior)
   const variacaoDespesas = formatVariation(totalDespesas, totalDespesasAnterior)
-  const variacaoQtdDespesas = formatVariation(
-    despesasFiltradas.length + cardInvoiceTotals.length,
-    despesasMesAnterior.length
-  )
   const variacaoSaldo = formatVariation(saldo, saldoAnterior)
 
-  // Últimas 5 despesas
-  const lastFiveItems = despesasFiltradas.slice(0, 5)
+  // Últimas atividades — combina despesas diretas + despesas de cartão individuais
+  const recentActivities = useMemo(() => {
+    type Activity = {
+      id: string
+      name: string
+      date: Date
+      dateLabel: string
+      category: string
+      value: number
+      type: 'expense' | 'card'
+      cardName?: string
+    }
+
+    const activities: Activity[] = []
+
+    // Despesas diretas do mês
+    for (const item of despesasFiltradas) {
+      activities.push({
+        id: `exp-${item.id}`,
+        name: item.expense,
+        date: parseLocalDate(item.created_at),
+        dateLabel: format(parseLocalDate(item.created_at), "dd MMM", { locale: ptBR }),
+        category: item.category || 'Outros',
+        value: item.value,
+        type: 'expense',
+      })
+    }
+
+    // Despesas individuais de cartão no período da fatura
+    for (const card of creditCards) {
+      const { start, end } = getInvoicePeriodByDueMonth(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        card.closing_day,
+        card.due_day
+      )
+      const cardExps = creditCardExpenses.filter(exp => {
+        if (exp.card_id !== card.id) return false
+        const expDate = parseLocalDate(exp.created_at)
+        return expDate >= start && expDate <= end
+      })
+      for (const exp of cardExps) {
+        activities.push({
+          id: `card-${exp.id}`,
+          name: exp.description,
+          date: parseLocalDate(exp.created_at),
+          dateLabel: format(parseLocalDate(exp.created_at), "dd MMM", { locale: ptBR }),
+          category: exp.category || 'Cartão',
+          value: Number(exp.value),
+          type: 'card',
+          cardName: card.name,
+        })
+      }
+    }
+
+    // Ordenar por data mais recente e pegar as 5 primeiras
+    return activities
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 5)
+  }, [despesasFiltradas, creditCards, creditCardExpenses, selectedDate])
 
   // Maior despesa do mês (item 5)
   const maiorDespesa = useMemo(() => {
@@ -501,16 +538,32 @@ export function Overview({
   // Dados do gráfico de pizza (categorias) — inclui cartão
   const categoryData = useMemo(() => {
     // Despesas diretas
-    const combined = [...despesasFiltradas]
-    // Adicionar gastos de cartão como itens de categoria
-    for (const { card, total } of cardInvoiceTotals) {
-      combined.push({
-        category: `Cartão: ${card.name}`,
-        value: total,
-      } as ExpenseItem)
+    const combined: { category: string; value: number }[] = despesasFiltradas.map(d => ({
+      category: d.category,
+      value: d.value,
+    }))
+    // Despesas de cartão — usando a categoria real de cada despesa
+    for (const card of creditCards) {
+      const { start, end } = getInvoicePeriodByDueMonth(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        card.closing_day,
+        card.due_day
+      )
+      const cardExps = creditCardExpenses.filter(exp => {
+        if (exp.card_id !== card.id) return false
+        const expDate = parseLocalDate(exp.created_at)
+        return expDate >= start && expDate <= end
+      })
+      for (const exp of cardExps) {
+        combined.push({
+          category: exp.category || 'Outros',
+          value: Number(exp.value),
+        })
+      }
     }
-    return groupByCategory(combined)
-  }, [despesasFiltradas, cardInvoiceTotals])
+    return groupByCategory(combined as ExpenseItem[])
+  }, [despesasFiltradas, creditCards, creditCardExpenses, selectedDate])
 
   // Cor do saldo
   const saldoBg =
@@ -601,8 +654,6 @@ export function Overview({
                   description="em relação ao mês anterior"
                   icon={DollarSign}
                   bgColor="bg-success/15 border border-success/30"
-                  sparklineData={sparklineReceitas}
-                  sparklineColor="hsl(var(--success))"
                 />
               </motion.div>
               <motion.div variants={fadeInUp}>
@@ -613,17 +664,15 @@ export function Overview({
                   description="em relação ao mês anterior"
                   icon={Users}
                   bgColor="bg-danger/15 border border-danger/30"
-                  sparklineData={sparklineDespesas}
-                  sparklineColor="hsl(var(--danger))"
                 />
               </motion.div>
               <motion.div variants={fadeInUp}>
                 <KpiCard
-                  title="Qnt. de Despesas"
-                  value={`${despesasFiltradas.length + cardInvoiceTotals.length} ${(despesasFiltradas.length + cardInvoiceTotals.length) <= 1 ? 'Despesa' : 'Despesas'} no mês`}
-                  variation={variacaoQtdDespesas}
+                  title="Fatura dos Cartões"
+                  value={formatCurrency(totalCartao)}
+                  variation={formatVariation(totalCartao, totalCartaoAnterior)}
                   description="em relação ao mês anterior"
-                  icon={Receipt}
+                  icon={CreditCardLucide}
                   bgColor="bg-info/15 border border-info/30"
                 />
               </motion.div>
@@ -635,10 +684,6 @@ export function Overview({
                   description="em relação ao mês anterior"
                   icon={Scale}
                   bgColor={saldoBg}
-                  sparklineData={sparklineSaldo}
-                  sparklineColor={
-                    saldo >= 0 ? 'hsl(var(--success))' : 'hsl(var(--danger))'
-                  }
                 />
               </motion.div>
             </motion.div>
@@ -662,7 +707,7 @@ export function Overview({
                     <p className="text-xs text-muted-foreground">
                       {maiorDespesa.category} ·{' '}
                       {format(
-                        parseISO(maiorDespesa.created_at),
+                        parseLocalDate(maiorDespesa.created_at),
                         "dd 'de' MMMM",
                         { locale: ptBR }
                       )}
@@ -806,81 +851,6 @@ export function Overview({
             </Card>
             <Card className="lg:col-span-3">
               <CardHeader>
-                <CardTitle>Últimas 5 Despesas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-8">
-                  {lastFiveItems.length <= 0 &&
-                  cardInvoiceTotals.length <= 0 ? (
-                    <div className="flex flex-col items-center py-8 text-center">
-                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                        <TrendingDown className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm font-medium">Sem despesas</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Nenhuma despesa registrada neste mês
-                      </p>
-                      <Link
-                        href="/despesas/novo"
-                        className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-brand/80 transition-colors"
-                      >
-                        <PlusCircle className="h-3.5 w-3.5" />
-                        Registrar despesa
-                      </Link>
-                    </div>
-                  ) : (
-                    <>
-                      {lastFiveItems.map(item => (
-                        <div key={item.id} className="flex items-center">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
-                              {item.expense}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(
-                                parseISO(item.created_at),
-                                "EEEE, dd 'de' LLLL 'de' yyyy",
-                                { locale: ptBR }
-                              )}
-                            </p>
-                          </div>
-                          <div className="ml-auto font-medium">
-                            {formatCurrency(item.value)}
-                          </div>
-                        </div>
-                      ))}
-                      {cardInvoiceTotals.map(({ card, total }) => (
-                        <Link
-                          key={`card-${card.id}`}
-                          href="/cartao"
-                          className="flex items-center group hover:bg-muted/50 -mx-2 px-2 py-1 rounded-md transition-colors"
-                        >
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none flex items-center gap-1.5">
-                              <CreditCardLucide className="h-3.5 w-3.5 text-info" />
-                              Fatura {card.name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              ****{card.last_digits} · Vencimento dia{' '}
-                              {card.due_day}
-                            </p>
-                          </div>
-                          <div className="ml-auto font-medium text-info">
-                            {formatCurrency(total)}
-                          </div>
-                        </Link>
-                      ))}
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* ── Gráfico de pizza por categoria ────────── */}
-          <motion.div variants={fadeInUp}>
-            <Card>
-              <CardHeader>
                 <CardTitle>Despesas por Categoria</CardTitle>
               </CardHeader>
               <CardContent>
@@ -904,10 +874,10 @@ export function Overview({
                     </Link>
                   </div>
                 ) : (
-                  <div className="flex flex-col lg:flex-row items-center gap-6">
+                  <div className="flex flex-col items-center gap-4">
                     <ChartContainer
                       config={pieChartConfig}
-                      className="min-h-[250px] w-full max-w-[300px]"
+                      className="min-h-[200px] w-full max-w-[250px]"
                     >
                       <PieChart>
                         <ChartTooltip
@@ -928,8 +898,8 @@ export function Overview({
                           nameKey="category"
                           cx="50%"
                           cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
+                          innerRadius={50}
+                          outerRadius={85}
                           strokeWidth={2}
                           stroke="hsl(var(--background))"
                         >
@@ -944,7 +914,7 @@ export function Overview({
                     </ChartContainer>
 
                     {/* Legenda */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 w-full">
+                    <div className="grid grid-cols-1 gap-y-2 w-full">
                       {categoryData.map((item, index) => {
                         const pct =
                           totalDespesas > 0
@@ -977,6 +947,79 @@ export function Overview({
                         )
                       })}
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* ── Atividades Recentes ────────────────────── */}
+          <motion.div variants={fadeInUp}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Atividades Recentes</CardTitle>
+                <Link
+                  href="/despesas"
+                  className="text-sm font-medium text-brand hover:text-brand/80 transition-colors"
+                >
+                  Ver tudo
+                </Link>
+              </CardHeader>
+              <CardContent>
+                {recentActivities.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 text-center">
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <TrendingDown className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium">Sem atividades</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Nenhuma despesa registrada neste mês
+                    </p>
+                    <Link
+                      href="/despesas/novo"
+                      className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-brand/80 transition-colors"
+                    >
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      Registrar despesa
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {recentActivities.map(activity => (
+                      <div
+                        key={activity.id}
+                        className="flex items-center gap-4 py-4 first:pt-0 last:pb-0"
+                      >
+                        {/* Ícone */}
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                          activity.type === 'card'
+                            ? 'bg-info/15 text-info'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {activity.type === 'card'
+                            ? <CreditCardLucide className="h-4 w-4" />
+                            : <ShoppingBag className="h-4 w-4" />
+                          }
+                        </div>
+
+                        {/* Nome + data/categoria */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold truncate">
+                            {activity.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {activity.dateLabel} • {activity.type === 'card' && activity.cardName ? `${activity.cardName} • ` : ''}{activity.category}
+                          </p>
+                        </div>
+
+                        {/* Valor */}
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-bold text-danger">
+                            - {formatCurrency(activity.value)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
