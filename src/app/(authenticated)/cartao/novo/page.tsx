@@ -23,30 +23,21 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { getExpenseFormIcon } from '@/lib/categories'
 import type { CreditCard } from '@/lib/credit-card'
+import { formatarValor } from '@/lib/utils'
 import { createClient } from '@/util/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import { addMonths, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   ArrowRight,
-  Banknote,
   BarChart3,
-  BookOpen,
-  Car,
   CheckCircle2,
   CreditCard as CreditCardIcon,
-  Gift,
-  HeartPulse,
-  Home,
   Info,
   Layers,
   Lightbulb,
-  Monitor,
-  ShieldAlert,
-  ShoppingBag,
-  ShoppingCart,
-  Utensils,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -93,20 +84,11 @@ export default function NovoGastoCartao() {
     init()
   }, [supabase])
 
-  const formatarValor = (val: string) => {
-    const numero = val.replace(/\D/g, '')
-    const centavos = Number.parseInt(numero) / 100
-    setValue(centavos)
-    return centavos.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-  }
 
   const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValor(formatarValor(e.target.value))
+    const { formatted, numeric } = formatarValor(e.target.value)
+    setValor(formatted)
+    setValue(numeric)
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -190,22 +172,7 @@ export default function NovoGastoCartao() {
     setIsDisabled(false)
   }
 
-  const getCategoryIcon = (cat: string) => {
-    switch (cat) {
-      case 'Alimentação': return <Utensils className="w-6 h-6" />
-      case 'Contas': return <Lightbulb className="w-6 h-6" />
-      case 'Dívidas': return <ShieldAlert className="w-6 h-6" />
-      case 'Doações': return <Gift className="w-6 h-6" />
-      case 'Educação': return <BookOpen className="w-6 h-6" />
-      case 'Lazer': return <Monitor className="w-6 h-6" />
-      case 'Moradia': return <Home className="w-6 h-6" />
-      case 'Saúde': return <HeartPulse className="w-6 h-6" />
-      case 'Transporte': return <Car className="w-6 h-6" />
-      case 'Vestuário': return <ShoppingBag className="w-6 h-6" />
-      case 'Impostos': return <Banknote className="w-6 h-6" />
-      default: return <ShoppingCart className="w-6 h-6" />
-    }
-  }
+  const getCategoryIcon = getExpenseFormIcon
 
   const formattedDate = date ? format(new Date(date + "T00:00:00"), 'dd MMM yyyy', { locale: ptBR }) : '---'
 

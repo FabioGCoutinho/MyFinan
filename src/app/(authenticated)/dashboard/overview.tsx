@@ -80,6 +80,7 @@ interface ExpenseItem {
   expense: string
   updated_at: Date
   value: number
+  is_paid: boolean
 }
 
 interface KpiItem {
@@ -432,7 +433,7 @@ export function Overview({
     [receitasFiltradas]
   )
   const totalDespesasDiretas = useMemo(
-    () => sumValues(despesasFiltradas),
+    () => sumValues(despesasFiltradas.filter(e => e.is_paid)),
     [despesasFiltradas]
   )
   const totalDespesas = totalDespesasDiretas + totalCartao
@@ -443,7 +444,7 @@ export function Overview({
     [receitasMesAnterior]
   )
   const totalDespesasAnterior =
-    useMemo(() => sumValues(despesasMesAnterior), [despesasMesAnterior]) +
+    useMemo(() => sumValues(despesasMesAnterior.filter(e => e.is_paid)), [despesasMesAnterior]) +
     totalCartaoAnterior
   const saldoAnterior = totalReceitasAnterior - totalDespesasAnterior
 

@@ -1,17 +1,8 @@
 'use client'
 
 import { revalidateAfterCardAction } from '@/components/actions'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import {
   Select,
   SelectContent,
@@ -34,10 +25,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
-import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
+import { CardExpenseCategoryIcon, cardExpenseCategoryBg } from '@/lib/categories'
+import type { CreditCard, CreditCardExpense, InvoicePayment } from '@/lib/credit-card'
 import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
+import { cn, parseLocalDate } from '@/lib/utils'
 import { createClient } from '@/util/supabase/client'
-import { parseLocalDate } from '@/lib/utils'
 import type { User } from '@supabase/supabase-js'
 import { addMonths, format, startOfMonth, subMonths, isSameMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -45,6 +37,8 @@ import {
   CalendarIcon,
   ChevronLeftIcon as ChevronLeft,
   ChevronRightIcon as ChevronRight,
+  ChevronUp,
+  ChevronDown,
   CreditCard as CreditCardIcon,
   Trash2,
   Filter,
@@ -52,41 +46,97 @@ import {
   TrendingDown,
   TrendingUp,
   Clock,
-  ShoppingBag,
-  Utensils,
-  Plane,
-  Car,
   PlusCircle,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { useEffect, useMemo, useState, useRef } from 'react'
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+type SummaryItem = {
+  cardName: string;
+  lastDigits: string;
+  closingStr: string;
+  dueStr: string;
+  cyclePercentage: number;
+  daysToDue: number;
+  isOverdue: boolean;
+  isPaid: boolean;
+};
 
-const ExpenseIcon = ({ category }: { category: string }) => {
-  switch (category.toUpperCase()) {
-    case 'E-COMMERCE': return <ShoppingBag className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-    case 'LAZER': return <Utensils className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-    case 'VIAGEM': return <Plane className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-    case 'TRANSPORTE': return <Car className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-    default: return <CreditCardIcon className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+function ScrollableCardList({ items, type }: { items: SummaryItem[], type: 'closing' | 'due' }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const scroll = (direction: 'up' | 'down') => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ top: direction === 'up' ? -120 : 120, behavior: 'smooth' })
+    }
   }
+
+  return (
+    <div className="flex flex-col flex-1 -mx-6 -mb-6 mt-2">
+      <button 
+        onClick={() => scroll('up')} 
+        className="w-full h-8 bg-surface hover:bg-muted/50 transition-colors flex items-center justify-center text-muted-foreground border-t border-border/50 shrink-0"
+      >
+        <ChevronUp className="w-4 h-4" />
+      </button>
+      
+      <div 
+        ref={scrollRef} 
+        className="space-y-4 max-h-[140px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-6 py-2"
+      >
+        {items.map((item, i) => (
+          <div key={i} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground truncate mr-3">
+                {item.cardName} •{item.lastDigits}
+              </span>
+              <span className="text-lg font-bold whitespace-nowrap">
+                {type === 'closing' ? item.closingStr : item.dueStr}
+              </span>
+            </div>
+            {type === 'closing' ? (
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
+                  <span>Ciclo</span>
+                  <span>{item.cyclePercentage}%</span>
+                </div>
+                <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-400 rounded-full transition-all duration-1000 ease-in-out" style={{ width: `${item.cyclePercentage}%` }} />
+                </div>
+              </div>
+            ) : (
+              item.isPaid ? (
+                <div className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded w-max uppercase tracking-wider bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+                  <CheckCircle2 className="w-3 h-3" />
+                  PAGA
+                </div>
+              ) : (
+                <div className={cn(
+                  "inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded w-max uppercase tracking-wider",
+                  item.isOverdue ? "bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400" : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+                )}>
+                  <Clock className="w-3 h-3" />
+                  {item.isOverdue ? `ATRASADO ${item.daysToDue}d` : `FALTAM ${item.daysToDue}d`}
+                </div>
+              )
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button 
+        onClick={() => scroll('down')} 
+        className="w-full h-8 bg-surface hover:bg-muted/50 transition-colors flex items-center justify-center text-muted-foreground border-t border-border/50 shrink-0"
+      >
+        <ChevronDown className="w-4 h-4" />
+      </button>
+    </div>
+  )
 }
 
-const ExpenseIconBg = ({ category }: { category: string }) => {
-  switch (category.toUpperCase()) {
-    case 'E-COMMERCE': return 'bg-indigo-100 dark:bg-indigo-900/30'
-    case 'LAZER': return 'bg-orange-100 dark:bg-orange-900/30'
-    case 'VIAGEM': return 'bg-blue-100 dark:bg-blue-900/30'
-    case 'TRANSPORTE': return 'bg-emerald-100 dark:bg-emerald-900/30'
-    default: return 'bg-teal-100 dark:bg-teal-900/30'
-  }
-}
+
 
 const getCardDotColor = (index: number) => {
   const colors = ['bg-emerald-500', 'bg-blue-600', 'bg-indigo-500', 'bg-orange-500', 'bg-rose-500']
@@ -100,6 +150,7 @@ export default function CartaoPage() {
   const [user, setUser] = useState<User | null>(null)
   const [cards, setCards] = useState<CreditCard[]>([])
   const [expenses, setExpenses] = useState<CreditCardExpense[]>([])
+  const [invoicePayments, setInvoicePayments] = useState<InvoicePayment[]>([])
   const [selectedCardId, setSelectedCardId] = useState<string>('all')
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
   const [alertShow, setAlertShow] = useState(false)
@@ -121,13 +172,15 @@ export default function CartaoPage() {
       setUser(user)
       if (!user) return
 
-      const [cardsRes, expensesRes] = await Promise.all([
+      const [cardsRes, expensesRes, invoicePaymentRes] = await Promise.all([
         supabase.from('credit_card').select('*').eq('user_id', user.id),
         supabase.from('credit_card_expense').select('*').eq('user_id', user.id),
+        supabase.from('invoice_payment').select('*').eq('user_id', user.id),
       ])
 
       setCards(cardsRes.data ?? [])
       setExpenses(expensesRes.data ?? [])
+      setInvoicePayments(invoicePaymentRes.data ?? [])
       setLoading(false)
     }
     init()
@@ -239,9 +292,20 @@ export default function CartaoPage() {
       if (new Date() > end) cyclePercentage = 100
       if (new Date() < start) cyclePercentage = 0
 
-      let daysToDue = Math.ceil((due.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-      const isOverdue = daysToDue < 0
-      daysToDue = Math.abs(daysToDue)
+      const rawDaysToDue = Math.ceil((due.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+      const isOverdue = rawDaysToDue < 0
+      const daysToDue = Math.abs(rawDaysToDue)
+
+      const cardExpenses = expenses.filter(exp => {
+        if (exp.card_id !== card.id) return false
+        const expDate = parseLocalDate(exp.created_at)
+        return expDate >= start && expDate <= end
+      })
+      const invoiceTotal = cardExpenses.reduce((sum, exp) => sum + Number(exp.value), 0)
+
+      const isPaid = invoicePayments.some(
+        p => p.card_id === card.id && p.month === date.getMonth() && p.year === date.getFullYear() && p.is_paid
+      ) || (invoiceTotal === 0 && rawDaysToDue <= 0)
 
       return {
         cardName: card.name,
@@ -251,6 +315,7 @@ export default function CartaoPage() {
         cyclePercentage,
         daysToDue,
         isOverdue,
+        isPaid,
       }
     })
 
@@ -269,8 +334,9 @@ export default function CartaoPage() {
       cyclePercentage?: number;
       daysToDue?: number;
       isOverdue?: boolean;
+      isPaid?: boolean;
     }
-  }, [cards, selectedCardId, date])
+  }, [cards, selectedCardId, date, invoicePayments, expenses])
 
   // Pagination Logic
   const itemsPerPage = isMobile ? 10 : 15
@@ -378,7 +444,7 @@ export default function CartaoPage() {
           {/* ── Cards de Resumo ──────────────────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
             {/* Total da Fatura Card */}
-            <div className="bg-[#219C90] text-white rounded-[24px] p-8 shadow-sm flex flex-col justify-between relative overflow-hidden transition-transform hover:scale-[1.02]">
+            <div className="bg-[#219C90] text-white rounded-[24px] p-6 shadow-sm flex flex-col justify-between relative overflow-hidden transition-transform hover:scale-[1.02]">
               <div className="z-10">
                 <p className="text-white/80 font-bold text-xs uppercase tracking-wider mb-2">Total da Fatura</p>
                 <h3 className="text-4xl font-black mb-6 tracking-tight">{totalFormatted}</h3>
@@ -396,7 +462,7 @@ export default function CartaoPage() {
             </div>
 
             {/* Fechamento Card */}
-            <div className="bg-surface border border-border rounded-[24px] p-8 shadow-sm flex flex-col justify-between transition-transform hover:scale-[1.02]">
+            <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col justify-between transition-transform hover:scale-[1.02] overflow-hidden">
               <div className="flex justify-between items-start mb-4">
                 <p className="text-muted-foreground font-bold text-xs uppercase tracking-wider">Fechamento</p>
                 <CalendarIcon className="w-5 h-5 text-emerald-600" />
@@ -414,32 +480,12 @@ export default function CartaoPage() {
                   </div>
                 </>
               ) : (
-                <div className="space-y-4">
-                  {summaryMetrics?.items.map((item, i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground truncate mr-3">
-                          {item.cardName} •{item.lastDigits}
-                        </span>
-                        <span className="text-lg font-bold whitespace-nowrap">{item.closingStr}</span>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
-                          <span>Ciclo</span>
-                          <span>{item.cyclePercentage}%</span>
-                        </div>
-                        <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-400 rounded-full transition-all duration-1000 ease-in-out" style={{ width: `${item.cyclePercentage}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <ScrollableCardList items={summaryMetrics?.items || []} type="closing" />
               )}
             </div>
 
             {/* Vencimento Card */}
-            <div className="bg-surface border border-border rounded-[24px] p-8 shadow-sm flex flex-col justify-between transition-transform hover:scale-[1.02]">
+            <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col justify-between transition-transform hover:scale-[1.02] overflow-hidden">
               <div className="flex justify-between items-start mb-4">
                 <p className="text-muted-foreground font-bold text-xs uppercase tracking-wider">Vencimento</p>
                 <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -448,35 +494,24 @@ export default function CartaoPage() {
                 <>
                   <h3 className="text-3xl font-bold mb-8">{summaryMetrics?.dueStr || '--'}</h3>
                   <div>
-                    <div className={cn(
-                      "inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded w-max uppercase tracking-wider",
-                      summaryMetrics?.isOverdue ? "bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400" : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-                    )}>
-                      <Clock className="w-3.5 h-3.5" />
-                      {summaryMetrics?.isOverdue ? `ATRASADO ${summaryMetrics.daysToDue} DIAS` : `FALTAM ${summaryMetrics?.daysToDue ?? 0} DIAS`}
-                    </div>
+                    {summaryMetrics?.isPaid ? (
+                      <div className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded w-max uppercase tracking-wider bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        PAGA
+                      </div>
+                    ) : (
+                      <div className={cn(
+                        "inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded w-max uppercase tracking-wider",
+                        summaryMetrics?.isOverdue ? "bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400" : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+                      )}>
+                        <Clock className="w-3.5 h-3.5" />
+                        {summaryMetrics?.isOverdue ? `ATRASADO ${summaryMetrics.daysToDue} DIAS` : `FALTAM ${summaryMetrics?.daysToDue ?? 0} DIAS`}
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
-                <div className="space-y-4">
-                  {summaryMetrics?.items.map((item, i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground truncate mr-3">
-                          {item.cardName} •{item.lastDigits}
-                        </span>
-                        <span className="text-lg font-bold whitespace-nowrap">{item.dueStr}</span>
-                      </div>
-                      <div className={cn(
-                        "inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded w-max uppercase tracking-wider",
-                        item.isOverdue ? "bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400" : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-                      )}>
-                        <Clock className="w-3 h-3" />
-                        {item.isOverdue ? `ATRASADO ${item.daysToDue}d` : `FALTAM ${item.daysToDue}d`}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <ScrollableCardList items={summaryMetrics?.items || []} type="due" />
               )}
             </div>
           </div>
@@ -524,8 +559,8 @@ export default function CartaoPage() {
                         <TableRow key={exp.id} className="group bg-white dark:bg-card border-border/40 hover:bg-muted/20 transition-colors">
                           <TableCell className="font-medium p-4 sm:pl-8">
                             <div className="flex items-center gap-4">
-                              <div className={cn("p-2.5 rounded-full flex-shrink-0", ExpenseIconBg({ category: exp.category }))}>
-                                <ExpenseIcon category={exp.category} />
+                              <div className={cn("p-2.5 rounded-full flex-shrink-0", cardExpenseCategoryBg(exp.category))}>
+                                <CardExpenseCategoryIcon category={exp.category} />
                               </div>
                               <div className="flex flex-col">
                                 <span className="font-bold text-foreground text-[15px]">{exp.description}</span>
@@ -614,27 +649,13 @@ export default function CartaoPage() {
       )}
 
       {/* ── Dialog de exclusão ───────────────────────── */}
-      <AlertDialog open={alertShow}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Confirmar a exclusão deste gasto do cartão?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setAlertShow(false)}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold"
-              onClick={handleDelete}
-            >
-              Confirmar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={alertShow}
+        title="Excluir Exclusão"
+        description="Confirmar a exclusão deste gasto do cartão?"
+        onCancel={() => setAlertShow(false)}
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }

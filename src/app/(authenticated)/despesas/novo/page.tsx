@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { getExpenseFormIcon } from '@/lib/categories'
+import { formatarValor } from '@/lib/utils'
 import { createClient } from '@/util/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import { addMonths } from 'date-fns'
@@ -30,18 +32,8 @@ import {
   Info,
   BarChart3,
   Layers,
-  Utensils,
-  Lightbulb,
-  ShieldAlert,
-  Gift,
-  BookOpen,
-  Monitor,
-  Home,
-  HeartPulse,
-  Car,
-  ShoppingBag,
-  Banknote,
-  ArrowRight
+  ArrowRight,
+  CircleDollarSign,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -62,7 +54,7 @@ export default function NovaDespesaPage() {
   const [user, setUser] = useState<User | null>(null)
   const [qtd_parcelas, setQtdParcelas] = useState<number>(1)
   const [isDisabled, setIsDisabled] = useState(false)
-  
+  const [isPaid, setIsPaid] = useState(false)
   const [isInstallment, setIsInstallment] = useState(false)
 
   useEffect(() => {
@@ -75,22 +67,11 @@ export default function NovaDespesaPage() {
     getUser()
   }, [supabase])
 
-  const formatarValor = (value: string) => {
-    const numero = value.replace(/\D/g, '')
-    const centavos = Number.parseInt(numero) / 100
-    setValue(centavos)
-
-    return centavos.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-  }
 
   const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const valorFormatado = formatarValor(e.target.value)
-    setValor(valorFormatado)
+    const { formatted, numeric } = formatarValor(e.target.value)
+    setValor(formatted)
+    setValue(numeric)
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -119,6 +100,7 @@ export default function NovaDespesaPage() {
           category,
           obs,
           user_id: user?.id,
+          is_paid: isPaid,
         }))
 
         const { error } = await supabase.from('expense').insert(records)
@@ -142,6 +124,7 @@ export default function NovaDespesaPage() {
         category,
         obs,
         user_id: user?.id,
+        is_paid: isPaid,
       })
 
       if (error) throw error
@@ -162,27 +145,13 @@ export default function NovaDespesaPage() {
     setDate('')
     setObs('')
     setIsInstallment(false)
+    setIsPaid(false)
     setQtdParcelas(1)
     setAlertShow(false)
     setIsDisabled(false)
   }
 
-  const getCategoryIcon = (cat: string) => {
-    switch (cat) {
-      case 'Alimentação': return <Utensils className="w-6 h-6" />
-      case 'Contas': return <Lightbulb className="w-6 h-6" />
-      case 'Dívidas': return <ShieldAlert className="w-6 h-6" />
-      case 'Doações': return <Gift className="w-6 h-6" />
-      case 'Educação': return <BookOpen className="w-6 h-6" />
-      case 'Lazer': return <Monitor className="w-6 h-6" />
-      case 'Moradia': return <Home className="w-6 h-6" />
-      case 'Saúde': return <HeartPulse className="w-6 h-6" />
-      case 'Transporte': return <Car className="w-6 h-6" />
-      case 'Vestuário': return <ShoppingBag className="w-6 h-6" />
-      case 'Impostos': return <Banknote className="w-6 h-6" />
-      default: return <ShoppingCart className="w-6 h-6" />
-    }
-  }
+  const getCategoryIcon = getExpenseFormIcon
 
   const formattedDate = date ? format(new Date(date + "T00:00:00"), 'dd MMM yyyy', { locale: ptBR }) : '---'
 
@@ -291,6 +260,28 @@ export default function NovaDespesaPage() {
                 </Select>
               </div>
 
+              {/* Despesa já foi paga? Toggle Block */}
+              <div className="flex items-center justify-between bg-white dark:bg-slate-950 p-4 rounded-2xl shadow-sm dark:shadow-none mt-2">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-full shrink-0 ${isPaid ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-500'}`}>
+                    <CircleDollarSign className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800 dark:text-slate-200">Despesa já foi paga?</h4>
+                    <p className="text-[11px] font-semibold text-slate-400">
+                      {isPaid ? 'Marcada como paga' : 'Ficará como pendente'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPaid(!isPaid)}
+                  className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${isPaid ? 'bg-[#34d399]' : 'bg-slate-200 dark:bg-slate-700'}`}
+                >
+                  <div className={`w-5 h-5 bg-white rounded-full absolute top-[2px] transition-transform shadow-sm ${isPaid ? 'translate-x-[26px]' : 'translate-x-[2px]'}`} />
+                </button>
+              </div>
+
               {/* Pagamento Parcelado Toggle Block */}
               <div className="flex items-center justify-between bg-white dark:bg-slate-950 p-4 rounded-2xl shadow-sm dark:shadow-none mt-2">
                 <div className="flex items-center gap-4">
@@ -302,7 +293,6 @@ export default function NovaDespesaPage() {
                     <p className="text-[11px] font-semibold text-slate-400">Dividir esta compra em meses</p>
                   </div>
                 </div>
-                {/* Custom tailwind switch */}
                 <button
                   type="button"
                   onClick={() => setIsInstallment(!isInstallment)}
@@ -448,6 +438,12 @@ export default function NovaDespesaPage() {
                          {isInstallment ? `${qtd_parcelas}x` : 'À vista'}
                        </span>
                     </div>
+                     <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">Status</span>
+                        <span className={`inline-flex items-center gap-1.5 font-bold text-right text-xs px-2.5 py-0.5 rounded-full ${isPaid ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`}>
+                          {isPaid ? '✓ Paga' : '○ Pendente'}
+                        </span>
+                     </div>
                  </div>
 
                  {/* Note Box */}

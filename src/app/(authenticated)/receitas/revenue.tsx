@@ -1,16 +1,8 @@
 'use client'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
+import { PaginationControls } from '@/components/ui/pagination-controls'
 import {
   Select,
   SelectContent,
@@ -19,24 +11,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { parseLocalDate } from '@/lib/utils'
+import { useSort } from '@/hooks/use-sort'
+import { RevenueCategoryIcon, revenueCategoryBg } from '@/lib/categories'
+import { cn, parseLocalDate } from '@/lib/utils'
 import { createClient } from '@/util/supabase/client'
-import { type ClassValue, clsx } from 'clsx'
 import { format, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  Banknote,
-  Briefcase,
-  ChevronLeft,
-  ChevronRight,
-  Gift,
   Landmark,
-  LineChart,
-  Monitor,
   PlusCircle,
-  ShoppingCart,
   SlidersHorizontal,
   Trash2,
   TrendingDown,
@@ -44,11 +27,6 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { twMerge } from 'tailwind-merge'
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
 
 interface ChildComponentProps {
   revenue: {
@@ -63,48 +41,8 @@ interface ChildComponentProps {
   onActionCompleted: () => void
 }
 
-type SortField = 'descricao' | 'categoria' | 'data' | 'valor' | null
-type SortDirection = 'asc' | 'desc'
 
-const CategoryIcon = ({ category }: { category: string }) => {
-  switch (category) {
-    case 'Salário':
-      return (
-        <Briefcase className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-      )
-    case 'Rendimentos':
-      return <LineChart className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-    case 'Freelance':
-      return (
-        <Monitor className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-      )
-    case 'Bônus':
-      return <Gift className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-    case 'Vendas':
-      return (
-        <ShoppingCart className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-      )
-    default:
-      return <Banknote className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-  }
-}
 
-const CategoryBg = ({ category }: { category: string }) => {
-  switch (category) {
-    case 'Salário':
-      return 'bg-emerald-100 dark:bg-emerald-900/30'
-    case 'Rendimentos':
-      return 'bg-blue-100 dark:bg-blue-900/30'
-    case 'Freelance':
-      return 'bg-indigo-100 dark:bg-indigo-900/30'
-    case 'Bônus':
-      return 'bg-yellow-100 dark:bg-yellow-900/30'
-    case 'Vendas':
-      return 'bg-orange-100 dark:bg-orange-900/30'
-    default:
-      return 'bg-teal-100 dark:bg-teal-900/30'
-  }
-}
 
 export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
   const supabase = useMemo(() => createClient(), [])
@@ -123,8 +61,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
     last12Months[0].value
   )
   const [categoria, setCategoria] = useState('Todas')
-  const [sortField, setSortField] = useState<SortField>(null)
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const { sortField, sortDirection, handleSort, renderSortIcon } = useSort()
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -230,24 +167,6 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
     const start = (currentPage - 1) * itemsPerPage
     return receitasFiltradas.slice(start, start + itemsPerPage)
   }, [receitasFiltradas, currentPage, itemsPerPage])
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortDirection('asc')
-    }
-  }
-
-  const renderSortIcon = (field: SortField) => {
-    if (sortField !== field) return null
-    return sortDirection === 'asc' ? (
-      <ArrowUpIcon className="ml-1 w-4 h-4 inline" />
-    ) : (
-      <ArrowDownIcon className="ml-1 w-4 h-4 inline" />
-    )
-  }
 
   function handleDeleteConfirm(id: number) {
     setAlertShow(true)
@@ -439,10 +358,10 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
                 <div
                   className={cn(
                     'p-3 rounded-xl flex-shrink-0',
-                    CategoryBg({ category: receita.category })
+                    revenueCategoryBg(receita.category)
                   )}
                 >
-                  <CategoryIcon category={receita.category} />
+                  <RevenueCategoryIcon category={receita.category} />
                 </div>
                 <div>
                   <p className="font-bold text-foreground truncate">
@@ -512,63 +431,21 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-4 p-4 px-6 border border-border flex items-center justify-between bg-white dark:bg-card rounded-[24px]">
-          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            Exibindo {paginatedRevenue.length} de {receitasFiltradas.length}{' '}
-            lançamentos
-          </span>
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-medium text-muted-foreground">
-              Página {currentPage} de {totalPages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 rounded-full shadow-sm"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 rounded-full shadow-sm"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={receitasFiltradas.length}
+        visibleItems={paginatedRevenue.length}
+        onPageChange={setCurrentPage}
+      />
 
-      <AlertDialog open={alertShow}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Receita</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta receita permanentemente? Essa
-              ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setAlertShow(false)}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleDeleteRevenue}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={alertShow}
+        title="Excluir Receita"
+        description="Tem certeza que deseja excluir esta receita permanentemente? Essa ação não pode ser desfeita."
+        onCancel={() => setAlertShow(false)}
+        onConfirm={handleDeleteRevenue}
+      />
     </div>
   )
 }

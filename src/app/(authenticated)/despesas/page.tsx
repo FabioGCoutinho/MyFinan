@@ -1,4 +1,4 @@
-import { revalidateDashboard } from '@/components/actions'
+import { revalidateDespesas } from '@/components/actions'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/util/supabase/server'
 import Link from 'next/link'
@@ -17,11 +17,12 @@ export default async function DespesasPage() {
     return <p>Erro ao carregar dados do usuário</p>
   }
 
-  const [expenseResult, creditCardResult, creditCardExpenseResult] =
+  const [expenseResult, creditCardResult, creditCardExpenseResult, invoicePaymentResult] =
     await Promise.all([
       supabase.from('expense').select('*').eq('user_id', user.id),
       supabase.from('credit_card').select('*').eq('user_id', user.id),
       supabase.from('credit_card_expense').select('*').eq('user_id', user.id),
+      supabase.from('invoice_payment').select('*').eq('user_id', user.id),
     ])
 
   if (expenseResult.error) {
@@ -35,7 +36,8 @@ export default async function DespesasPage() {
         expense={expenseResult.data ?? []}
         creditCards={creditCardResult.data ?? []}
         creditCardExpenses={creditCardExpenseResult.data ?? []}
-        onActionCompleted={revalidateDashboard}
+        invoicePayments={invoicePaymentResult.data ?? []}
+        onActionCompleted={revalidateDespesas}
       />
     </div>
   )

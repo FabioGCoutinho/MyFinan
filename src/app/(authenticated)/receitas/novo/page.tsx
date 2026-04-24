@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { formatarValor } from '@/lib/utils'
 import { createClient } from '@/util/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import { ArrowRight, CheckCircle2, Lightbulb } from 'lucide-react'
@@ -49,22 +50,11 @@ export default function NovaReceitaPage() {
     getUser()
   }, [supabase])
 
-  const formatarValor = (value: string) => {
-    const numero = value.replace(/\D/g, '')
-    const centavos = Number.parseInt(numero) / 100
-    setValue(centavos)
-
-    return centavos.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-  }
 
   const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const valorFormatado = formatarValor(e.target.value)
-    setValor(valorFormatado)
+    const { formatted, numeric } = formatarValor(e.target.value)
+    setValor(formatted)
+    setValue(numeric)
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -286,7 +276,7 @@ export default function NovaReceitaPage() {
               <Button
                 type="submit"
                 form="revenue-form"
-                className="hidden lg:flex w-full h-12 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base items-center justify-center gap-2"
+                className="hidden lg:flex w-full h-12 rounded-xl bg-primary hover:bg-primary/90 font-semibold text-base items-center justify-center gap-2"
                 onClick={() => {
                   // Trigger the form submit via ref
                   const form = document.querySelector(

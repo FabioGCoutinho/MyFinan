@@ -52,9 +52,13 @@ export default async function DashboardPage() {
   try {
     const { revenues, expenses, creditCards, creditCardExpenses } =
       await fetchFinancialData(user.id)
+    
+    // Filtra as despesas pagas para o gráfico
+    const paidExpenses = expenses.filter(e => e.is_paid === true)
+
     const kpiUser = buildFinancialHistory(
       revenues,
-      expenses,
+      paidExpenses,
       creditCards,
       creditCardExpenses
     )
