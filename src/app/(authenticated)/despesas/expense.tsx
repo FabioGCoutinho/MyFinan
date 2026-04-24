@@ -9,16 +9,7 @@ import {
   XAxis,
 } from 'recharts'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -27,12 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
+import { PaginationControls } from '@/components/ui/pagination-controls'
 import { useIsMobile } from '@/hooks/use-mobile'
-import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
+import { useSort } from '@/hooks/use-sort'
+import { ExpenseCategoryIcon, expenseCategoryBg } from '@/lib/categories'
+import type { CreditCard, CreditCardExpense, InvoicePayment } from '@/lib/credit-card'
 import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
-import { parseLocalDate } from '@/lib/utils'
+import type { UnifiedExpenseItem } from '@/lib/types'
+import { cn, parseLocalDate } from '@/lib/utils'
 import { createClient } from '@/util/supabase/client'
-import { type ClassValue, clsx } from 'clsx'
 import {
   addMonths,
   format,
@@ -42,37 +37,19 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  Banknote,
-  BookOpen,
-  Car,
-  ChevronLeft,
-  ChevronRight,
   CreditCard as CreditCardIcon,
+  CheckCircle2,
+  CircleDollarSign,
   Filter,
-  Gift,
-  HeartPulse,
-  Home,
-  Lightbulb,
-  Monitor,
   PlusCircle,
-  ShieldAlert,
-  ShoppingBag,
-  SlidersHorizontal,
   Trash2,
   TrendingDown,
   TrendingUp,
-  Utensils,
   Wallet,
+  Receipt,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { twMerge } from 'tailwind-merge'
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
 
 interface ChildComponentProps {
   expense: {
@@ -83,107 +60,21 @@ interface ChildComponentProps {
     expense: string
     updated_at: Date
     value: number
+    is_paid: boolean
   }[]
   creditCards: CreditCard[]
   creditCardExpenses: CreditCardExpense[]
+  invoicePayments: InvoicePayment[]
   onActionCompleted: () => void
 }
 
-type SortField = 'descricao' | 'categoria' | 'data' | 'valor' | null
-type SortDirection = 'asc' | 'desc'
-
-type UnifiedExpenseItem =
-  | {
-      id: number
-      type: 'expense'
-      description: string
-      obs: string
-      category: string
-      date: string
-      value: number
-    }
-  | {
-      id: string
-      type: 'card'
-      description: string
-      obs: string
-      category: string
-      date: string
-      value: number
-    }
-
-const CategoryIcon = ({ category }: { category: string }) => {
-  switch (category) {
-    case 'Alimentação':
-      return (
-        <Utensils className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-      )
-    case 'Contas':
-      return (
-        <Lightbulb className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-      )
-    case 'Dívidas':
-      return <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400" />
-    case 'Doações':
-      return <Gift className="w-5 h-5 text-pink-600 dark:text-pink-400" />
-    case 'Educação':
-      return <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-    case 'Lazer':
-      return (
-        <Monitor className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-      )
-    case 'Moradia':
-      return <Home className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-    case 'Saúde':
-      return (
-        <HeartPulse className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-      )
-    case 'Transporte':
-      return <Car className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-    case 'Vestuário':
-      return (
-        <ShoppingBag className="w-5 h-5 text-fuchsia-600 dark:text-fuchsia-400" />
-      )
-    case 'Cartão':
-      return <CreditCardIcon className="w-5 h-5 text-info" />
-    default:
-      return <Banknote className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-  }
-}
-
-const CategoryBg = ({ category }: { category: string }) => {
-  switch (category) {
-    case 'Alimentação':
-      return 'bg-orange-100 dark:bg-orange-900/30'
-    case 'Contas':
-      return 'bg-yellow-100 dark:bg-yellow-900/30'
-    case 'Dívidas':
-      return 'bg-red-100 dark:bg-red-900/30'
-    case 'Doações':
-      return 'bg-pink-100 dark:bg-pink-900/30'
-    case 'Educação':
-      return 'bg-blue-100 dark:bg-blue-900/30'
-    case 'Lazer':
-      return 'bg-purple-100 dark:bg-purple-900/30'
-    case 'Moradia':
-      return 'bg-indigo-100 dark:bg-indigo-900/30'
-    case 'Saúde':
-      return 'bg-emerald-100 dark:bg-emerald-900/30'
-    case 'Transporte':
-      return 'bg-teal-100 dark:bg-teal-900/30'
-    case 'Vestuário':
-      return 'bg-fuchsia-100 dark:bg-fuchsia-900/30'
-    case 'Cartão':
-      return 'bg-info/20 dark:bg-info/10'
-    default:
-      return 'bg-gray-100 dark:bg-gray-900/30'
-  }
-}
+type PaymentFilter = 'Todas' | 'Pendentes' | 'Pagas'
 
 export function Expense({
   expense,
   creditCards,
   creditCardExpenses,
+  invoicePayments,
   onActionCompleted,
 }: ChildComponentProps) {
   const supabase = useMemo(() => createClient(), [])
@@ -204,14 +95,20 @@ export function Expense({
     })
   }, [selectedMonth])
   const [categoria, setCategoria] = useState('Todas')
-  const [sortField, setSortField] = useState<SortField>(null)
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('Todas')
+  const { sortField, sortDirection, handleSort, renderSortIcon } = useSort()
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [expenseTarget, setExpenseTarget] = useState<number | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+
+  const isInvoicePaid = (cardId: number, month: number, year: number) => {
+    return invoicePayments.some(
+      p => p.card_id === cardId && p.month === month && p.year === year && p.is_paid
+    )
+  }
 
   const isMobile = useIsMobile()
 
@@ -274,11 +171,12 @@ export function Expense({
       .filter(item => item.total > 0)
   }, [creditCards, creditCardExpenses, selectedMonth])
 
-  const { currentMonthTotal, previousMonthTotal } = useMemo(() => {
+  const { paidTotal, forecastTotal, previousMonthTotal } = useMemo(() => {
     const currentMonthDate = parseLocalDate(selectedMonth)
     const previousMonthDate = subMonths(currentMonthDate, 1)
 
-    let current = 0
+    let paid = 0
+    let forecast = 0
     let previous = 0
 
     for (const r of expense) {
@@ -287,7 +185,8 @@ export function Expense({
         d.getFullYear() === currentMonthDate.getFullYear() &&
         d.getMonth() === currentMonthDate.getMonth()
       ) {
-        current += r.value
+        forecast += r.value
+        if (r.is_paid) paid += r.value
       }
       if (
         d.getFullYear() === previousMonthDate.getFullYear() &&
@@ -297,18 +196,25 @@ export function Expense({
       }
     }
 
-    current += cardInvoiceTotals.reduce((sum, item) => sum + item.total, 0)
+    // Card invoices
+    const sDate = parseLocalDate(selectedMonth)
+    for (const { card, total } of cardInvoiceTotals) {
+      forecast += total
+      if (isInvoicePaid(card.id, sDate.getMonth(), sDate.getFullYear())) {
+        paid += total
+      }
+    }
     previous += prevCardInvoiceTotals.reduce((sum, item) => sum + item.total, 0)
 
-    return { currentMonthTotal: current, previousMonthTotal: previous }
-  }, [selectedMonth, expense, cardInvoiceTotals, prevCardInvoiceTotals])
+    return { paidTotal: paid, forecastTotal: forecast, previousMonthTotal: previous }
+  }, [selectedMonth, expense, cardInvoiceTotals, prevCardInvoiceTotals, invoicePayments])
 
   const percentageChange =
     previousMonthTotal === 0
-      ? currentMonthTotal > 0
+      ? forecastTotal > 0
         ? 100
         : 0
-      : ((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100
+      : ((forecastTotal - previousMonthTotal) / previousMonthTotal) * 100
 
   const categoryChartData = useMemo(() => {
     const totals: Record<string, number> = {}
@@ -353,11 +259,11 @@ export function Expense({
 
   const unifiedList = useMemo(() => {
     const list: UnifiedExpenseItem[] = []
+    const sDate = parseLocalDate(selectedMonth)
 
     // Despesas normais
     for (const despesa of expense) {
       const dDate = parseLocalDate(despesa.created_at)
-      const sDate = parseLocalDate(selectedMonth)
       if (
         dDate.getMonth() === sDate.getMonth() &&
         dDate.getFullYear() === sDate.getFullYear() &&
@@ -371,15 +277,14 @@ export function Expense({
           category: despesa.category,
           date: despesa.created_at,
           value: despesa.value,
+          is_paid: despesa.is_paid,
         })
       }
     }
 
     // Faturas de Cartão
     if (categoria === 'Todas' || categoria === 'Cartão') {
-      const sDate = parseLocalDate(selectedMonth)
       for (const { card, total } of cardInvoiceTotals) {
-        // Mock a reasonable date for sorting (e.g. at the due day of the selected month)
         const mockDate = new Date(
           sDate.getFullYear(),
           sDate.getMonth(),
@@ -393,12 +298,20 @@ export function Expense({
           category: 'Cartão',
           date: mockDate.toISOString(),
           value: total,
+          is_paid: isInvoicePaid(card.id, sDate.getMonth(), sDate.getFullYear()),
         })
       }
     }
 
+    // Filtro de pagamento
+    const filtered = paymentFilter === 'Todas'
+      ? list
+      : list.filter(item =>
+          paymentFilter === 'Pagas' ? item.is_paid : !item.is_paid
+        )
+
     if (sortField) {
-      list.sort((a, b) => {
+      filtered.sort((a, b) => {
         let aValue: string | number = 0
         let bValue: string | number = 0
         switch (sortField) {
@@ -425,45 +338,51 @@ export function Expense({
         return 0
       })
     } else {
-      list.sort((a, b) => {
+      filtered.sort((a, b) => {
         return (
           parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()
         )
       })
     }
 
-    return list
+    return filtered
   }, [
     selectedMonth,
     categoria,
+    paymentFilter,
     expense,
     cardInvoiceTotals,
+    invoicePayments,
     sortField,
     sortDirection,
   ])
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortDirection('asc')
-    }
-  }
-
-  const renderSortIcon = (field: SortField) => {
-    if (sortField !== field) return null
-    return sortDirection === 'asc' ? (
-      <ArrowUpIcon className="ml-1 w-4 h-4 inline" />
-    ) : (
-      <ArrowDownIcon className="ml-1 w-4 h-4 inline" />
-    )
-  }
-
   function handleDeledConfirm(id: number, type: string) {
-    if (type === 'card') return // Can't delete card invoice from here
+    if (type === 'card') return
     setAlertShow(true)
     setSelectedId(id)
+  }
+
+  const handleMarkAsPaid = async (item: UnifiedExpenseItem) => {
+    try {
+      if (item.type === 'expense') {
+        await supabase.from('expense').update({ is_paid: true }).eq('id', item.id)
+      } else if (item.type === 'card') {
+        const sDate = parseLocalDate(selectedMonth)
+        const cardId = Number(String(item.id).replace('card-', ''))
+        await supabase.from('invoice_payment').upsert({
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          card_id: cardId,
+          month: sDate.getMonth(),
+          year: sDate.getFullYear(),
+          is_paid: true,
+          paid_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,card_id,month,year' })
+      }
+      onActionCompleted()
+    } catch (err) {
+      console.error('Erro ao marcar como paga:', err)
+    }
   }
 
   const handleDeledExpense = async () => {
@@ -482,10 +401,10 @@ export function Expense({
   // Progress Bar e Metas
   const showProgress = expenseTarget !== null && expenseTarget > 0
   const progressPercentage = showProgress
-    ? Math.min((currentMonthTotal / expenseTarget) * 100, 100)
+    ? Math.min((forecastTotal / expenseTarget) * 100, 100)
     : 100
   const progressPercentText = showProgress
-    ? ((currentMonthTotal / expenseTarget) * 100).toFixed(1)
+    ? ((forecastTotal / expenseTarget) * 100).toFixed(1)
     : '100'
 
   // Pagination Logic
@@ -517,10 +436,10 @@ export function Expense({
 
       {/* Hero Cards Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Left Card: Total e Orçamento */}
+        {/* Left Card: Pagas + Previstas */}
         <div className="bg-card dark:bg-card/50 border rounded-2xl p-8 shadow-sm flex flex-col relative overflow-hidden">
           <p className="text-muted-foreground font-bold mb-4">
-            Total Mensal (
+            Despesas Pagas (
             <span className="capitalize">
               {format(parseLocalDate(selectedMonth), 'MMMM yyyy', {
                 locale: ptBR,
@@ -528,14 +447,27 @@ export function Expense({
             </span>
             )
           </p>
-          <div className="flex items-baseline gap-1 mb-6">
-            <span className="text-xl font-bold text-foreground">R$</span>
-            <h3 className="text-5xl font-black text-foreground">
-              {currentMonthTotal.toLocaleString('pt-BR', {
+          <div className="flex items-baseline gap-1 mb-2">
+            <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">R$</span>
+            <h3 className="text-4xl font-black text-emerald-600 dark:text-emerald-400">
+              {paidTotal.toLocaleString('pt-BR', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </h3>
+          </div>
+
+          <div className="flex items-center gap-3 mb-6 pb-6 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Previstas</span>
+            </div>
+            <span className="text-lg font-extrabold text-foreground">
+              {forecastTotal.toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+              })}
+            </span>
           </div>
 
           <div className="mt-auto relative z-10">
@@ -567,7 +499,7 @@ export function Expense({
             {showProgress ? (
               <p className="text-xs text-muted-foreground font-medium w-3/4">
                 Você está{' '}
-                {currentMonthTotal > (expenseTarget || 0) ? 'acima' : 'dentro'}{' '}
+                {forecastTotal > (expenseTarget || 0) ? 'acima' : 'dentro'}{' '}
                 da meta de R${' '}
                 {expenseTarget?.toLocaleString('pt-BR', {
                   minimumFractionDigits: 2,
@@ -699,12 +631,29 @@ export function Expense({
             </Select>
           </div>
 
+          <div className="flex flex-col space-y-3 w-full sm:w-auto">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              Status de Pagamento
+            </p>
+            <Select value={paymentFilter} onValueChange={(v) => setPaymentFilter(v as PaymentFilter)}>
+              <SelectTrigger className="w-full sm:w-[180px] bg-surface rounded-full h-11 border-border font-medium shadow-sm">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todas">Todas</SelectItem>
+                <SelectItem value="Pendentes">Pendentes</SelectItem>
+                <SelectItem value="Pagas">Pagas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button
             variant="ghost"
             type="button"
             className="h-11 font-bold text-brand hover:bg-brand/10"
             onClick={() => {
               setCategoria('Todas')
+              setPaymentFilter('Todas')
               setSelectedMonth(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
             }}
           >
@@ -716,7 +665,7 @@ export function Expense({
 
       {/* List Headers */}
       {!isMobile && (
-        <div className="grid grid-cols-[1fr_150px_120px_160px_60px] gap-4 px-6 py-3 mb-2 text-xs font-bold text-muted-foreground tracking-wider">
+        <div className="grid grid-cols-[1fr_150px_120px_100px_160px_60px] gap-4 px-6 py-3 mb-2 text-xs font-bold text-muted-foreground tracking-wider">
           <button
             type="button"
             onClick={() => handleSort('descricao')}
@@ -738,6 +687,7 @@ export function Expense({
           >
             Data {renderSortIcon('data')}
           </button>
+          <div className="text-left">Status</div>
           <button
             type="button"
             onClick={() => handleSort('valor')}
@@ -755,17 +705,17 @@ export function Expense({
           paginatedExpenses.map(item => (
             <div
               key={item.id}
-              className="bg-card border rounded-2xl p-4 sm:px-6 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:grid sm:grid-cols-[1fr_150px_120px_160px_60px] items-start sm:items-center gap-4 group"
+              className="bg-card border rounded-2xl p-4 sm:px-6 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:grid sm:grid-cols-[1fr_150px_120px_100px_160px_60px] items-start sm:items-center gap-4 group"
             >
               {/* Descrição */}
               <div className="flex items-center gap-4 w-full">
                 <div
                   className={cn(
                     'p-3 rounded-xl flex-shrink-0',
-                    CategoryBg({ category: item.category })
+                    expenseCategoryBg(item.category)
                   )}
                 >
-                  <CategoryIcon category={item.category} />
+                  <ExpenseCategoryIcon category={item.category} />
                 </div>
                 <div className="min-w-0">
                   {item.type === 'card' ? (
@@ -814,6 +764,27 @@ export function Expense({
                   })}
                 </div>
 
+                {/* Status */}
+                <div className="w-full sm:w-auto flex items-center justify-between sm:block">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider sm:hidden">
+                    Status
+                  </span>
+                  {item.is_paid ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="w-3 h-3" /> Paga
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleMarkAsPaid(item)}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-emerald-50 hover:dark:bg-emerald-900/30 hover:text-emerald-600 hover:dark:text-emerald-400 transition-colors cursor-pointer"
+                      title="Marcar como paga"
+                    >
+                      <CircleDollarSign className="w-3 h-3" /> Pendente
+                    </button>
+                  )}
+                </div>
+
                 {/* Valor */}
                 <div className="w-full sm:w-auto flex items-center justify-between sm:block text-left sm:text-right">
                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider sm:hidden">
@@ -838,7 +809,7 @@ export function Expense({
                     Ação
                   </span>
                   {item.type === 'card' ? (
-                    <div className="h-8 w-8" /> // Exibe vazio
+                    <div className="h-8 w-8" />
                   ) : (
                     <Button
                       variant="ghost"
@@ -861,65 +832,21 @@ export function Expense({
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-4 p-4 px-6 border border-border flex items-center justify-between bg-white dark:bg-card rounded-[24px]">
-          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            Exibindo {paginatedExpenses.length} de {unifiedList.length}{' '}
-            lançamentos
-          </span>
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-medium text-muted-foreground">
-              Página {currentPage} de {totalPages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                size="icon"
-                className="h-8 w-8 rounded-full shadow-sm"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                size="icon"
-                className="h-8 w-8 rounded-full shadow-sm"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={unifiedList.length}
+        visibleItems={paginatedExpenses.length}
+        onPageChange={setCurrentPage}
+      />
 
-      <AlertDialog open={alertShow}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Despesa</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta despesa permanentemente? Essa
-              ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setAlertShow(false)}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleDeledExpense}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={alertShow}
+        title="Excluir Despesa"
+        description="Tem certeza que deseja excluir esta despesa permanentemente? Essa ação não pode ser desfeita."
+        onCancel={() => setAlertShow(false)}
+        onConfirm={handleDeledExpense}
+      />
     </div>
   )
 }

@@ -92,3 +92,14 @@ export interface CreditCardExpense {
   created_at: string
   updated_at: string
 }
+
+export interface InvoicePayment {
+  id: number
+  user_id: string
+  card_id: number
+  month: number
+  year: number
+  is_paid: boolean
+  paid_at: string | null
+  created_at: string
+}

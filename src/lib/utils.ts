@@ -37,3 +37,21 @@ export function parseLocalDate(dateStr: string): Date {
   }
   return new Date(year, month - 1, day, 12, 0, 0) // noon to avoid any edge cases
 }
+
+/**
+ * Formata uma string de input numérico como moeda BRL.
+ * Retorna tanto o valor formatado (para exibição) quanto o numérico (para armazenamento).
+ */
+export function formatarValor(rawInput: string): { formatted: string; numeric: number } {
+  const numero = rawInput.replace(/\D/g, '')
+  const centavos = Number.parseInt(numero || '0') / 100
+
+  const formatted = centavos.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+
+  return { formatted, numeric: centavos }
+}

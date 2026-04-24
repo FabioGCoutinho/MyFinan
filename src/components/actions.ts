@@ -99,6 +99,11 @@ export async function revalidateDashboard() {
   revalidatePath('/dashboard', 'page')
 }
 
+export async function revalidateDespesas() {
+  revalidatePath('/despesas', 'page')
+  revalidatePath('/dashboard', 'page')
+}
+
 export async function updateProfile(
   displayName: string,
   expenseTarget?: number | null
