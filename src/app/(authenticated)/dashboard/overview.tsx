@@ -18,6 +18,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import type {
   CreditCardExpense,
   CreditCard as CreditCardType,
+  InvoicePayment,
 } from '@/lib/credit-card'
 import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
 import { formatCurrency, formatVariation, parseLocalDate } from '@/lib/utils'
@@ -99,6 +100,7 @@ interface ChildComponentProps {
   kpiUser: KpiItem[]
   creditCards: CreditCardType[]
   creditCardExpenses: CreditCardExpense[]
+  invoicePayments: InvoicePayment[]
 }
 
 interface KpiCardProps {
@@ -330,7 +332,13 @@ export function Overview({
   kpiUser,
   creditCards,
   creditCardExpenses,
+  invoicePayments,
 }: ChildComponentProps) {
+  const isInvoicePaid = (cardId: number, month: number, year: number) => {
+    return invoicePayments.some(
+      p => p.card_id === cardId && p.month === month && p.year === year && p.is_paid
+    )
+  }
   const monthOptions = useMemo(() => buildMonthOptions(12), [])
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value)
 
@@ -401,8 +409,8 @@ export function Overview({
   }, [creditCards, creditCardExpenses, selectedDate])
 
   const totalCartao = useMemo(
-    () => cardInvoiceTotals.reduce((sum, item) => sum + item.total, 0),
-    [cardInvoiceTotals]
+    () => cardInvoiceTotals.filter(item => isInvoicePaid(item.card.id, selectedDate.getMonth(), selectedDate.getFullYear())).reduce((sum, item) => sum + item.total, 0),
+    [cardInvoiceTotals, invoicePayments, selectedDate]
   )
 
   // Faturas do mês anterior (para variação)
@@ -414,6 +422,10 @@ export function Overview({
         card.closing_day,
         card.due_day
       )
+      
+      const isPaid = isInvoicePaid(card.id, previousMonth.getMonth(), previousMonth.getFullYear())
+      if (!isPaid) return sum
+      
       return (
         sum +
         creditCardExpenses
@@ -425,7 +437,7 @@ export function Overview({
           .reduce((s, exp) => s + Number(exp.value), 0)
       )
     }, 0)
-  }, [creditCards, creditCardExpenses, previousMonth])
+  }, [creditCards, creditCardExpenses, previousMonth, invoicePayments])
 
   // Totais memorizados
   const totalReceitas = useMemo(

@@ -1,5 +1,5 @@
 import { getInvoicePeriodByDueMonth } from '@/lib/credit-card'
-import type { CreditCard, CreditCardExpense } from '@/lib/credit-card'
+import type { CreditCard, CreditCardExpense, InvoicePayment } from '@/lib/credit-card'
 
 function capitalizeFirstLetter(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
@@ -28,7 +28,8 @@ export function buildFinancialHistory(
   allRevenues: FinancialItem[],
   allExpenses: FinancialItem[],
   creditCards: CreditCard[] = [],
-  creditCardExpenses: CreditCardExpense[] = []
+  creditCardExpenses: CreditCardExpense[] = [],
+  invoicePayments: InvoicePayment[] = []
 ): MonthlyHistory[] {
   const today = new Date()
   const startDate = new Date(today.getFullYear(), today.getMonth() - 11, 1)
@@ -86,14 +87,21 @@ export function buildFinancialHistory(
         card.closing_day,
         card.due_day
       )
-      const cardTotal = creditCardExpenses
-        .filter(exp => {
-          if (exp.card_id !== card.id) return false
-          const expDate = new Date(exp.created_at)
-          return expDate >= start && expDate <= end
-        })
-        .reduce((sum, exp) => sum + Number(exp.value), 0)
-      entry.expense += cardTotal
+      
+      const isPaid = invoicePayments.some(
+        p => p.card_id === card.id && p.month === entry.fullDate.getMonth() && p.year === entry.fullDate.getFullYear() && p.is_paid
+      )
+      
+      if (isPaid) {
+        const cardTotal = creditCardExpenses
+          .filter(exp => {
+            if (exp.card_id !== card.id) return false
+            const expDate = new Date(exp.created_at)
+            return expDate >= start && expDate <= end
+          })
+          .reduce((sum, exp) => sum + Number(exp.value), 0)
+        entry.expense += cardTotal
+      }
     }
   }
 
