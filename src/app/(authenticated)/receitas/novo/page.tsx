@@ -237,7 +237,7 @@ export default function NovaReceitaPage() {
             <div className="lg:hidden">
               <Button
                 type="submit"
-                className="w-full h-12 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base"
+                className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 font-semibold text-base"
               >
                 Salvar Receita
                 <ArrowRight className="ml-2 h-4 w-4" />

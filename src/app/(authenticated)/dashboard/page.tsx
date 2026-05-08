@@ -16,11 +16,13 @@ async function fetchFinancialData(userId: string) {
     expenseResult,
     creditCardResult,
     creditCardExpenseResult,
+    invoicePaymentResult,
   ] = await Promise.all([
     supabase.from('revenue').select('*').eq('user_id', userId),
     supabase.from('expense').select('*').eq('user_id', userId),
     supabase.from('credit_card').select('*').eq('user_id', userId),
     supabase.from('credit_card_expense').select('*').eq('user_id', userId),
+    supabase.from('invoice_payment').select('*').eq('user_id', userId),
   ])
 
   if (revenueResult.error) throw revenueResult.error
@@ -31,6 +33,7 @@ async function fetchFinancialData(userId: string) {
     expenses: expenseResult.data ?? [],
     creditCards: creditCardResult.data ?? [],
     creditCardExpenses: creditCardExpenseResult.data ?? [],
+    invoicePayments: invoicePaymentResult.data ?? [],
   }
 }
 
@@ -50,7 +53,7 @@ export default async function DashboardPage() {
   }
 
   try {
-    const { revenues, expenses, creditCards, creditCardExpenses } =
+    const { revenues, expenses, creditCards, creditCardExpenses, invoicePayments } =
       await fetchFinancialData(user.id)
     
     // Filtra as despesas pagas para o gráfico
@@ -60,7 +63,8 @@ export default async function DashboardPage() {
       revenues,
       paidExpenses,
       creditCards,
-      creditCardExpenses
+      creditCardExpenses,
+      invoicePayments
     )
 
     return (
@@ -74,6 +78,7 @@ export default async function DashboardPage() {
           kpiUser={kpiUser}
           creditCards={creditCards}
           creditCardExpenses={creditCardExpenses}
+          invoicePayments={invoicePayments}
         />
       </div>
     )
