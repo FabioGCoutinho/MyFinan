@@ -1,6 +1,8 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { PluggySyncButton } from '@/components/pluggy-sync-button'
+import { QuickEditDialog, type QuickEditTarget } from '@/components/quick-edit-dialog'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { PaginationControls } from '@/components/ui/pagination-controls'
 import {
@@ -19,6 +21,7 @@ import { format, startOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Landmark,
+  Pencil,
   PlusCircle,
   SlidersHorizontal,
   Trash2,
@@ -64,6 +67,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
   const { sortField, sortDirection, handleSort, renderSortIcon } = useSort()
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [editingItem, setEditingItem] = useState<QuickEditTarget | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null)
 
@@ -190,7 +194,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
   return (
     <div className="container mx-auto py-10">
       {/* Header */}
-      <div className="w-full flex items-center justify-between gap-4 mb-8">
+      <div className="w-full flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">
             Fluxo de Caixa
@@ -199,11 +203,14 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
             Minhas Receitas
           </h2>
         </div>
-        <Button asChild className="px-6 font-semibold">
-          <Link href="/receitas/novo">
-            <PlusCircle className="mr-2 h-5 w-5 text-white" /> Nova Receita
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <PluggySyncButton onSyncSuccess={onActionCompleted} />
+          <Button asChild className="px-6 font-semibold">
+            <Link href="/receitas/novo">
+              <PlusCircle className="mr-2 h-5 w-5 text-white" /> Nova Receita
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Hero Cards Section */}
@@ -312,7 +319,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
 
       {/* List Headers */}
       {!isMobile && (
-        <div className="grid grid-cols-[1fr_150px_120px_160px_60px] gap-4 px-6 py-3 mb-2 text-xs font-bold text-muted-foreground tracking-wider">
+        <div className="grid grid-cols-[1fr_150px_120px_160px_88px] gap-4 px-6 py-3 mb-2 text-xs font-bold text-muted-foreground tracking-wider">
           <button
             type="button"
             onClick={() => handleSort('descricao')}
@@ -351,7 +358,7 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
           paginatedRevenue.map(receita => (
             <div
               key={receita.id}
-              className="bg-card border rounded-2xl p-4 sm:px-6 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:grid sm:grid-cols-[1fr_150px_120px_160px_60px] items-start sm:items-center gap-4 group"
+              className="bg-card border rounded-2xl p-4 sm:px-6 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:grid sm:grid-cols-[1fr_150px_120px_160px_88px] items-start sm:items-center gap-4 group"
             >
               {/* Descrição */}
               <div className="flex items-center gap-4 w-full">
@@ -412,14 +419,36 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider sm:hidden">
                     Ação
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => handleDeleteConfirm(receita.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      size="icon"
+                      className="h-9 w-9 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      title="Editar receita"
+                      onClick={() =>
+                        setEditingItem({
+                          id: receita.id,
+                          type: 'revenue',
+                          title: receita.revenue,
+                          category: receita.category,
+                          obs: receita.obs || '',
+                        })
+                      }
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      size="icon"
+                      className="h-9 w-9 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      title="Excluir receita"
+                      onClick={() => handleDeleteConfirm(receita.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -445,6 +474,12 @@ export function Revenue({ revenue, onActionCompleted }: ChildComponentProps) {
         description="Tem certeza que deseja excluir esta receita permanentemente? Essa ação não pode ser desfeita."
         onCancel={() => setAlertShow(false)}
         onConfirm={handleDeleteRevenue}
+      />
+
+      <QuickEditDialog
+        target={editingItem}
+        onClose={() => setEditingItem(null)}
+        onSaved={onActionCompleted}
       />
     </div>
   )

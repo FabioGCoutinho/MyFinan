@@ -11,6 +11,8 @@ import {
 
 
 import { Button } from '@/components/ui/button'
+import { PluggySyncButton } from '@/components/pluggy-sync-button'
+import { QuickEditDialog, type QuickEditTarget } from '@/components/quick-edit-dialog'
 import {
   Select,
   SelectContent,
@@ -41,6 +43,7 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Filter,
+  Pencil,
   PlusCircle,
   Trash2,
   TrendingDown,
@@ -99,6 +102,7 @@ export function Expense({
   const { sortField, sortDirection, handleSort, renderSortIcon } = useSort()
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [editingItem, setEditingItem] = useState<QuickEditTarget | null>(null)
   const [expenseTarget, setExpenseTarget] = useState<number | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null)
@@ -418,7 +422,7 @@ export function Expense({
   return (
     <div className="container mx-auto py-10">
       {/* Header */}
-      <div className="w-full flex items-center justify-between gap-4 mb-8">
+      <div className="w-full flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">
             Controle de Caixa
@@ -427,11 +431,14 @@ export function Expense({
             Minhas Despesas
           </h2>
         </div>
-        <Button asChild className="px-6 font-semibold">
-          <Link href="/despesas/novo">
-            <PlusCircle className="mr-2 h-5 w-5 text-white" /> Nova Despesa
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <PluggySyncButton onSyncSuccess={onActionCompleted} />
+          <Button asChild className="px-6 font-semibold">
+            <Link href="/despesas/novo">
+              <PlusCircle className="mr-2 h-5 w-5 text-white" /> Nova Despesa
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Hero Cards Section */}
@@ -665,7 +672,7 @@ export function Expense({
 
       {/* List Headers */}
       {!isMobile && (
-        <div className="grid grid-cols-[1fr_150px_120px_100px_160px_60px] gap-4 px-6 py-3 mb-2 text-xs font-bold text-muted-foreground tracking-wider">
+        <div className="grid grid-cols-[1fr_150px_120px_100px_160px_88px] gap-4 px-6 py-3 mb-2 text-xs font-bold text-muted-foreground tracking-wider">
           <button
             type="button"
             onClick={() => handleSort('descricao')}
@@ -705,7 +712,7 @@ export function Expense({
           paginatedExpenses.map(item => (
             <div
               key={item.id}
-              className="bg-card border rounded-2xl p-4 sm:px-6 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:grid sm:grid-cols-[1fr_150px_120px_100px_160px_60px] items-start sm:items-center gap-4 group"
+              className="bg-card border rounded-2xl p-4 sm:px-6 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:grid sm:grid-cols-[1fr_150px_120px_100px_160px_88px] items-start sm:items-center gap-4 group"
             >
               {/* Descrição */}
               <div className="flex items-center gap-4 w-full">
@@ -804,22 +811,43 @@ export function Expense({
                 </div>
 
                 {/* Ação */}
-                <div className="w-full sm:w-auto flex items-center justify-between sm:block sm:justify-center">
+                <div className="w-full sm:w-auto flex items-center justify-between sm:justify-center">
                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider sm:hidden">
                     Ação
                   </span>
                   {item.type === 'card' ? (
                     <div className="h-8 w-8" />
                   ) : (
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDeledConfirm(item.id, item.type)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end sm:justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        size="icon"
+                        className="h-9 w-9 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        title="Editar despesa"
+                        onClick={() =>
+                          setEditingItem({
+                            id: Number(item.id),
+                            type: 'expense',
+                            title: item.description,
+                            category: item.category,
+                            obs: item.obs || '',
+                          })
+                        }
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        size="icon"
+                        className="h-9 w-9 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Excluir despesa"
+                        onClick={() => handleDeledConfirm(item.id, item.type)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -846,6 +874,12 @@ export function Expense({
         description="Tem certeza que deseja excluir esta despesa permanentemente? Essa ação não pode ser desfeita."
         onCancel={() => setAlertShow(false)}
         onConfirm={handleDeledExpense}
+      />
+
+      <QuickEditDialog
+        target={editingItem}
+        onClose={() => setEditingItem(null)}
+        onSaved={onActionCompleted}
       />
     </div>
   )

@@ -96,6 +96,7 @@ export async function signOut() {
 }
 
 export async function revalidateDashboard() {
+  revalidatePath('/receitas', 'page')
   revalidatePath('/dashboard', 'page')
 }
 
