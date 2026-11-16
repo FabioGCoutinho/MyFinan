@@ -5,6 +5,7 @@ import {
   updatePassword,
   updateProfile,
 } from '@/components/actions'
+import { PluggyConfigSection } from '@/components/pluggy-config-section'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -783,6 +784,7 @@ export default function ConfigPage() {
         <div className="lg:col-span-8 flex flex-col gap-8">
           <ProfileSection user={user} />
           <CreditCardSection userId={user.id} />
+          <PluggyConfigSection />
         </div>
 
         {/* Coluna Direita */}

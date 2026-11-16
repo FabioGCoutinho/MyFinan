@@ -79,6 +79,7 @@ export interface CreditCard {
   due_day: number
   closing_day: number
   created_at: string
+  pluggy_account_id?: string | null
 }
 
 export interface CreditCardExpense {

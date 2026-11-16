@@ -7,6 +7,7 @@ import {
   Gift,
   HeartPulse,
   Home,
+  Layers,
   Lightbulb,
   LineChart,
   Monitor,
@@ -125,12 +126,32 @@ export const CardExpenseCategoryIcon = ({ category }: { category: string }) => {
   switch (category.toUpperCase()) {
     case 'E-COMMERCE':
       return <ShoppingBag className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+    case 'ALIMENTAÇÃO':
+      return <Utensils className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+    case 'CONTAS':
+      return <Lightbulb className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+    case 'DÍVIDAS':
+      return <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400" />
+    case 'DOAÇÕES':
+      return <Gift className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+    case 'EDUCAÇÃO':
+      return <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
     case 'LAZER':
-      return <Monitor className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+      return <Monitor className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+    case 'MORADIA':
+      return <Home className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+    case 'SAÚDE':
+      return <HeartPulse className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
     case 'VIAGEM':
       return <Plane className="w-5 h-5 text-blue-600 dark:text-blue-400" />
     case 'TRANSPORTE':
-      return <Car className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+      return <Car className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+    case 'VESTUÁRIO':
+      return <ShoppingBag className="w-5 h-5 text-fuchsia-600 dark:text-fuchsia-400" />
+    case 'IMPOSTOS':
+      return <Banknote className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+    case 'COMPRAS PARCELADAS':
+      return <Layers className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
     default:
       return <CreditCardIcon className="w-5 h-5 text-teal-600 dark:text-teal-400" />
   }
@@ -140,12 +161,32 @@ export const cardExpenseCategoryBg = (category: string): string => {
   switch (category.toUpperCase()) {
     case 'E-COMMERCE':
       return 'bg-indigo-100 dark:bg-indigo-900/30'
-    case 'LAZER':
+    case 'ALIMENTAÇÃO':
       return 'bg-orange-100 dark:bg-orange-900/30'
+    case 'CONTAS':
+      return 'bg-yellow-100 dark:bg-yellow-900/30'
+    case 'DÍVIDAS':
+      return 'bg-red-100 dark:bg-red-900/30'
+    case 'DOAÇÕES':
+      return 'bg-pink-100 dark:bg-pink-900/30'
+    case 'EDUCAÇÃO':
+      return 'bg-blue-100 dark:bg-blue-900/30'
+    case 'LAZER':
+      return 'bg-purple-100 dark:bg-purple-900/30'
+    case 'MORADIA':
+      return 'bg-indigo-100 dark:bg-indigo-900/30'
+    case 'SAÚDE':
+      return 'bg-emerald-100 dark:bg-emerald-900/30'
     case 'VIAGEM':
       return 'bg-blue-100 dark:bg-blue-900/30'
     case 'TRANSPORTE':
-      return 'bg-emerald-100 dark:bg-emerald-900/30'
+      return 'bg-teal-100 dark:bg-teal-900/30'
+    case 'VESTUÁRIO':
+      return 'bg-fuchsia-100 dark:bg-fuchsia-900/30'
+    case 'IMPOSTOS':
+      return 'bg-amber-100 dark:bg-amber-900/30'
+    case 'COMPRAS PARCELADAS':
+      return 'bg-cyan-100 dark:bg-cyan-900/30'
     default:
       return 'bg-teal-100 dark:bg-teal-900/30'
   }

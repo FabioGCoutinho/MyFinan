@@ -1,6 +1,8 @@
 'use client'
 
 import { revalidateAfterCardAction } from '@/components/actions'
+import { PluggySyncButton } from '@/components/pluggy-sync-button'
+import { QuickEditDialog, type QuickEditTarget } from '@/components/quick-edit-dialog'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import {
@@ -46,12 +48,13 @@ import {
   TrendingDown,
   TrendingUp,
   Clock,
+  Pencil,
   PlusCircle,
   AlertCircle,
   CheckCircle2,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type SummaryItem = {
   cardName: string;
@@ -155,6 +158,7 @@ export default function CartaoPage() {
   const [date, setDate] = useState<Date>(startOfMonth(new Date()))
   const [alertShow, setAlertShow] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [editingItem, setEditingItem] = useState<QuickEditTarget | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -164,27 +168,28 @@ export default function CartaoPage() {
     setCurrentPage(1)
   }, [date, selectedCardId])
 
-  useEffect(() => {
-    const init = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setUser(user)
-      if (!user) return
+  const fetchCardData = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    setUser(user)
+    if (!user) return
 
-      const [cardsRes, expensesRes, invoicePaymentRes] = await Promise.all([
-        supabase.from('credit_card').select('*').eq('user_id', user.id),
-        supabase.from('credit_card_expense').select('*').eq('user_id', user.id),
-        supabase.from('invoice_payment').select('*').eq('user_id', user.id),
-      ])
+    const [cardsRes, expensesRes, invoicePaymentRes] = await Promise.all([
+      supabase.from('credit_card').select('*').eq('user_id', user.id),
+      supabase.from('credit_card_expense').select('*').eq('user_id', user.id),
+      supabase.from('invoice_payment').select('*').eq('user_id', user.id),
+    ])
 
-      setCards(cardsRes.data ?? [])
-      setExpenses(expensesRes.data ?? [])
-      setInvoicePayments(invoicePaymentRes.data ?? [])
-      setLoading(false)
-    }
-    init()
+    setCards(cardsRes.data ?? [])
+    setExpenses(expensesRes.data ?? [])
+    setInvoicePayments(invoicePaymentRes.data ?? [])
+    setLoading(false)
   }, [supabase])
+
+  useEffect(() => {
+    fetchCardData()
+  }, [fetchCardData])
 
   // ── Cartões ──────────────────────────────────────────
 
@@ -382,9 +387,12 @@ export default function CartaoPage() {
             <p className="text-muted-foreground mb-6 max-w-sm">
               Cadastre um cartão de crédito nas Configurações para começar a gerenciar seus gastos de fatura.
             </p>
-            <Button asChild className="px-6 rounded-full font-semibold">
-              <Link href="/config">Ir para Configurações</Link>
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <PluggySyncButton onSyncSuccess={fetchCardData} className="rounded-full" />
+              <Button asChild className="px-6 rounded-full font-semibold">
+                <Link href="/config">Ir para Configurações</Link>
+              </Button>
+            </div>
           </div>
         </div>
       ) : (
@@ -433,8 +441,12 @@ export default function CartaoPage() {
                 </Select>
               </div>
               
-              <div className="sm:pt-7 w-full sm:w-auto">
-                <Button asChild className="w-full rounded-full h-11 shadow-sm px-6 font-bold bg-brand hover:opacity-90">
+              <div className="sm:pt-7 w-full sm:w-auto flex flex-wrap items-center gap-3">
+                <PluggySyncButton
+                  onSyncSuccess={fetchCardData}
+                  className="rounded-full h-11 px-5"
+                />
+                <Button asChild className="w-full sm:w-auto rounded-full h-11 shadow-sm px-6 font-bold bg-brand hover:opacity-90">
                   <Link href="/cartao/novo"><PlusCircle className="w-5 h-5 mr-2" /> Nova Transação</Link>
                 </Button>
               </div>
@@ -537,7 +549,7 @@ export default function CartaoPage() {
                       <TableHead className="font-bold text-xs uppercase tracking-wider text-muted-foreground py-5 hidden lg:table-cell">Cartão</TableHead>
                     )}
                     <TableHead className="font-bold text-xs uppercase tracking-wider text-muted-foreground text-right py-5 pr-8">Valor</TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -562,8 +574,13 @@ export default function CartaoPage() {
                               <div className={cn("p-2.5 rounded-full flex-shrink-0", cardExpenseCategoryBg(exp.category))}>
                                 <CardExpenseCategoryIcon category={exp.category} />
                               </div>
-                              <div className="flex flex-col">
+                              <div className="flex flex-col min-w-0">
                                 <span className="font-bold text-foreground text-[15px]">{exp.description}</span>
+                                {exp.obs && (
+                                  <span className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-[320px]">
+                                    {exp.obs}
+                                  </span>
+                                )}
                                 {isMobile && (
                                   <span className="text-xs text-muted-foreground font-medium mt-0.5">
                                     {format(parseLocalDate(exp.created_at), 'dd MMM, yyyy', { locale: ptBR })}
@@ -597,14 +614,36 @@ export default function CartaoPage() {
                           </TableCell>
                           
                           <TableCell className="pr-4">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity" 
-                              onClick={() => handleDeleteConfirm(exp.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                type="button"
+                                size="icon"
+                                title="Editar gasto"
+                                className="h-9 w-9 sm:h-8 sm:w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                onClick={() =>
+                                  setEditingItem({
+                                    id: exp.id,
+                                    type: 'card_expense',
+                                    title: exp.description,
+                                    category: exp.category,
+                                    obs: exp.obs || '',
+                                  })
+                                }
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                type="button"
+                                size="icon"
+                                title="Excluir gasto"
+                                className="h-9 w-9 sm:h-8 sm:w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                onClick={() => handleDeleteConfirm(exp.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -655,6 +694,15 @@ export default function CartaoPage() {
         description="Confirmar a exclusão deste gasto do cartão?"
         onCancel={() => setAlertShow(false)}
         onConfirm={handleDelete}
+      />
+
+      <QuickEditDialog
+        target={editingItem}
+        onClose={() => setEditingItem(null)}
+        onSaved={async () => {
+          await fetchCardData()
+          await revalidateAfterCardAction()
+        }}
       />
     </div>
   )
