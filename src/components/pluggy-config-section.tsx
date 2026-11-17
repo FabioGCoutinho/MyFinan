@@ -110,6 +110,13 @@ export function PluggyConfigSection() {
 
   useEffect(() => {
     fetchStatus()
+    const handleRefresh = () => {
+      fetchStatus()
+    }
+    window.addEventListener('pluggy:refresh', handleRefresh)
+    return () => {
+      window.removeEventListener('pluggy:refresh', handleRefresh)
+    }
   }, [fetchStatus])
 
   async function handleAddItem(e: React.FormEvent) {
