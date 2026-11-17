@@ -272,11 +272,42 @@ export default function CartaoPage() {
     return ((currentTotal - prevTotal) / prevTotal) * 100
   }, [date, selectedCardId, cards, expenses, filteredExpenses])
 
+  const cardsWithExpensesInMonth = useMemo(() => {
+    const month = date.getMonth()
+    const year = date.getFullYear()
+
+    return cards.filter(card => {
+      const { start, end } = getInvoicePeriodByDueMonth(
+        year,
+        month,
+        card.closing_day,
+        card.due_day
+      )
+      return expenses.some(exp => {
+        if (exp.card_id !== card.id) return false
+        const expDate = parseLocalDate(exp.created_at)
+        return expDate >= start && expDate <= end
+      })
+    })
+  }, [cards, expenses, date])
+
+  useEffect(() => {
+    if (
+      selectedCardId !== 'all' &&
+      !cardsWithExpensesInMonth.some(c => String(c.id) === selectedCardId)
+    ) {
+      setSelectedCardId('all')
+    }
+  }, [cardsWithExpensesInMonth, selectedCardId])
+
   // Summary Metrics
   const summaryMetrics = useMemo(() => {
-    if (cards.length === 0) return null
+    if (cardsWithExpensesInMonth.length === 0) return null
 
-    const targetCards = selectedCardId === 'all' ? cards : cards.filter(c => c.id === Number(selectedCardId))
+    const targetCards =
+      selectedCardId === 'all'
+        ? cardsWithExpensesInMonth
+        : cardsWithExpensesInMonth.filter(c => c.id === Number(selectedCardId))
     if (targetCards.length === 0) return null
 
     const items = targetCards.map(card => {
@@ -341,7 +372,7 @@ export default function CartaoPage() {
       isOverdue?: boolean;
       isPaid?: boolean;
     }
-  }, [cards, selectedCardId, date, invoicePayments, expenses])
+  }, [cardsWithExpensesInMonth, selectedCardId, date, invoicePayments, expenses])
 
   // Pagination Logic
   const itemsPerPage = isMobile ? 10 : 15
@@ -376,10 +407,13 @@ export default function CartaoPage() {
     )
   }
 
+  const hasActiveCardsOrExpenses =
+    cards.some(c => !c.is_archived) || expenses.length > 0
+
   return (
     <div className="flex flex-col xl:w-3/4 w-full mx-auto pb-10">
       
-      {cards.length === 0 ? (
+      {!hasActiveCardsOrExpenses ? (
         <div className="mt-8">
           <div className="bg-surface border border-dashed rounded-2xl p-16 flex flex-col items-center justify-center text-center shadow-sm">
             <CreditCardIcon className="h-16 w-16 text-muted-foreground mb-6 opacity-40" />
@@ -432,7 +466,7 @@ export default function CartaoPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os cartões</SelectItem>
-                    {cards.map(card => (
+                    {cardsWithExpensesInMonth.map(card => (
                       <SelectItem key={card.id} value={String(card.id)}>
                         {card.name} ****{card.last_digits}
                       </SelectItem>
@@ -479,7 +513,14 @@ export default function CartaoPage() {
                 <p className="text-muted-foreground font-bold text-xs uppercase tracking-wider">Fechamento</p>
                 <CalendarIcon className="w-5 h-5 text-emerald-600" />
               </div>
-              {summaryMetrics?.isSingle ? (
+              {!summaryMetrics ? (
+                <>
+                  <h3 className="text-3xl font-bold mb-8 text-muted-foreground">--</h3>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Nenhum cartão com gastos neste mês
+                  </p>
+                </>
+              ) : summaryMetrics.isSingle ? (
                 <>
                   <h3 className="text-3xl font-bold mb-8">{summaryMetrics?.closingStr || '--'}</h3>
                   <div className="space-y-3">
@@ -492,7 +533,7 @@ export default function CartaoPage() {
                   </div>
                 </>
               ) : (
-                <ScrollableCardList items={summaryMetrics?.items || []} type="closing" />
+                <ScrollableCardList items={summaryMetrics.items} type="closing" />
               )}
             </div>
 
@@ -502,7 +543,14 @@ export default function CartaoPage() {
                 <p className="text-muted-foreground font-bold text-xs uppercase tracking-wider">Vencimento</p>
                 <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
-              {summaryMetrics?.isSingle ? (
+              {!summaryMetrics ? (
+                <>
+                  <h3 className="text-3xl font-bold mb-8 text-muted-foreground">--</h3>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Nenhum cartão com gastos neste mês
+                  </p>
+                </>
+              ) : summaryMetrics.isSingle ? (
                 <>
                   <h3 className="text-3xl font-bold mb-8">{summaryMetrics?.dueStr || '--'}</h3>
                   <div>
@@ -523,7 +571,7 @@ export default function CartaoPage() {
                   </div>
                 </>
               ) : (
-                <ScrollableCardList items={summaryMetrics?.items || []} type="due" />
+                <ScrollableCardList items={summaryMetrics.items} type="due" />
               )}
             </div>
           </div>

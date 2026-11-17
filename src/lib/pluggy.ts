@@ -1,5 +1,6 @@
 import type { CreditCard } from '@/lib/credit-card'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { addMonths, format } from 'date-fns'
 
 const PLUGGY_API_URL = 'https://api.pluggy.ai'
 const DEFAULT_ALLOWED_EMAIL = 'clowkun@gmail.com'
@@ -57,6 +58,8 @@ export interface PluggyTransaction {
     installmentNumber?: number
     totalInstallments?: number
     cardNumber?: string
+    purchaseDate?: string | null
+    billPostDate?: string | null
   } | null
   paymentData?: {
     receiver?: { name?: string }
@@ -436,6 +439,7 @@ export function isCreditCardBillPayment(
     /pagto\s+fatura/,
     /pgto\s+fatura/,
     /pagamento\s+cartao\s+de\s+credito/,
+    /\bcard_network\b/,
   ]
 
   return patterns.some(pattern => pattern.test(normalizedDesc))
@@ -849,6 +853,32 @@ function buildCardDescriptionAndCategory(tx: PluggyTransaction): {
   }
 }
 
+export function resolvePluggyCardTransactionDate(tx: PluggyTransaction): string {
+  const rawTxDate = (tx.date || '').slice(0, 10)
+  const totalInstallments = tx.creditCardMetadata?.totalInstallments ?? 1
+  const installmentNumber = tx.creditCardMetadata?.installmentNumber ?? 1
+
+  if (totalInstallments > 1 && installmentNumber > 1) {
+    const rawPurchaseDate = (
+      tx.creditCardMetadata?.purchaseDate ||
+      tx.date ||
+      ''
+    ).slice(0, 10)
+
+    if (
+      rawPurchaseDate &&
+      rawTxDate.slice(0, 7) === rawPurchaseDate.slice(0, 7)
+    ) {
+      const baseDate = new Date(`${rawPurchaseDate}T00:00:00`)
+      if (!Number.isNaN(baseDate.getTime())) {
+        return format(addMonths(baseDate, installmentNumber - 1), 'yyyy-MM-dd')
+      }
+    }
+  }
+
+  return rawTxDate
+}
+
 export function buildUpdatedRecordFields(
   account: PluggyAccount,
   tx: PluggyTransaction,
@@ -857,10 +887,9 @@ export function buildUpdatedRecordFields(
   const absValue = Math.abs(Number(tx.amount))
   if (!Number.isFinite(absValue) || absValue <= 0) return null
 
-  const txDate = (tx.date || '').slice(0, 10)
-  if (!txDate) return null
-
   if (targetTable === 'credit_card_expense') {
+    const txDate = resolvePluggyCardTransactionDate(tx)
+    if (!txDate) return null
     const { title, category } = buildCardDescriptionAndCategory(tx)
     return {
       description: title,
@@ -870,6 +899,9 @@ export function buildUpdatedRecordFields(
       created_at: txDate,
     }
   }
+
+  const txDate = (tx.date || '').slice(0, 10)
+  if (!txDate) return null
 
   const description = formatPluggyDescription(tx.description)
   const obs = buildBankObs(account, tx)
@@ -905,12 +937,16 @@ async function resolveOrCreateCreditCard(
   cards: CreditCard[],
   summary: PluggySyncSummary
 ): Promise<CreditCard> {
-  const byPluggyId = cards.find(c => c.pluggy_account_id === account.id)
+  const byPluggyId = cards.find(
+    c => !c.is_archived && c.pluggy_account_id === account.id
+  )
   if (byPluggyId) return byPluggyId
 
   const rawDigits = (account.number || '').replace(/\D/g, '').slice(-4)
   if (rawDigits.length === 4) {
-    const byDigits = cards.find(c => c.last_digits === rawDigits)
+    const byDigits = cards.find(
+      c => !c.is_archived && c.last_digits === rawDigits
+    )
     if (byDigits) {
       if (!byDigits.pluggy_account_id) {
         await supabase
@@ -1028,8 +1064,6 @@ export async function syncPluggyTransactionsForAccount(params: {
     const ignoredSyncLogs: SyncedTransactionLogInsert[] = []
 
     for (const tx of transactions) {
-      if (tx.status === 'PENDING') continue
-
       if (syncedSet.has(tx.id)) {
         summary.skippedDuplicates += 1
         continue
@@ -1042,6 +1076,21 @@ export async function syncPluggyTransactionsForAccount(params: {
       const txDate = tx.date.slice(0, 10)
       const description = formatPluggyDescription(tx.description)
       const obs = buildBankObs(account, tx)
+
+      if (
+        /card_network/i.test(description) ||
+        /card_network/i.test(tx.description || '')
+      ) {
+        syncedSet.add(tx.id)
+        ignoredSyncLogs.push({
+          user_id: userId,
+          pluggy_transaction_id: tx.id,
+          pluggy_account_id: account.id,
+          target_table: 'ignored',
+          record_id: null,
+        })
+        continue
+      }
 
       const isDebit = tx.type === 'DEBIT' || rawAmount < 0
       const isCredit = !isDebit && tx.type === 'CREDIT' && rawAmount > 0
@@ -1167,8 +1216,6 @@ export async function syncPluggyTransactionsForAccount(params: {
     const ignoredCardSyncLogs: SyncedTransactionLogInsert[] = []
 
     for (const tx of transactions) {
-      if (tx.status === 'PENDING') continue
-
       if (syncedSet.has(tx.id)) {
         summary.skippedDuplicates += 1
         continue
@@ -1179,8 +1226,12 @@ export async function syncPluggyTransactionsForAccount(params: {
       if (!Number.isFinite(absValue) || absValue <= 0) continue
 
       const { title, category } = buildCardDescriptionAndCategory(tx)
+      const isParentInstallmentRow =
+        (tx.creditCardMetadata?.totalInstallments ?? 1) > 1 &&
+        !tx.creditCardMetadata?.installmentNumber
 
       if (
+        isParentInstallmentRow ||
         tx.type === 'CREDIT' ||
         rawAmount < 0 ||
         isCreditCardBillPayment(title, tx.category)
@@ -1205,7 +1256,7 @@ export async function syncPluggyTransactionsForAccount(params: {
           value: absValue,
           category,
           obs: `[Open Finance - ${account.name}]`,
-          created_at: tx.date.slice(0, 10),
+          created_at: resolvePluggyCardTransactionDate(tx),
         })
         cardExpenseSyncLogs.push({
           user_id: userId,

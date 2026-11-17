@@ -186,6 +186,8 @@ function CreditCardSection({ userId }: { userId: string }) {
   
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteCardId, setDeleteCardId] = useState<number | null>(null)
+  const [deleteWithRecords, setDeleteWithRecords] = useState(true)
+  const [deletingCard, setDeletingCard] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Form state
@@ -202,6 +204,7 @@ function CreditCardSection({ userId }: { userId: string }) {
         .from('credit_card')
         .select('*')
         .eq('user_id', userId)
+        .eq('is_archived', false)
         .order('created_at', { ascending: false })
       setCards(data ?? [])
       setLoading(false)
@@ -269,16 +272,66 @@ function CreditCardSection({ userId }: { userId: string }) {
 
   async function handleDeleteCard() {
     if (!deleteCardId) return
-    const { error } = await supabase
-      .from('credit_card')
-      .delete()
-      .eq('id', deleteCardId)
+    setDeletingCard(true)
+    const cardToDelete = cards.find(c => c.id === deleteCardId)
 
-    if (!error) {
-      setCards(prev => prev.filter(c => c.id !== deleteCardId))
+    try {
+      if (deleteWithRecords) {
+        const { data: cardExpenses } = await supabase
+          .from('credit_card_expense')
+          .select('id')
+          .eq('card_id', deleteCardId)
+          .eq('user_id', userId)
+
+        const expenseIds = (cardExpenses ?? []).map(
+          (e: { id: number }) => e.id
+        )
+
+        if (cardToDelete?.pluggy_account_id) {
+          await supabase
+            .from('pluggy_synced_transactions')
+            .delete()
+            .eq('user_id', userId)
+            .eq('pluggy_account_id', cardToDelete.pluggy_account_id)
+        }
+
+        if (expenseIds.length > 0) {
+          await supabase
+            .from('pluggy_synced_transactions')
+            .delete()
+            .eq('user_id', userId)
+            .eq('target_table', 'credit_card_expense')
+            .in('record_id', expenseIds)
+        }
+
+        const { error } = await supabase
+          .from('credit_card')
+          .delete()
+          .eq('id', deleteCardId)
+          .eq('user_id', userId)
+
+        if (!error) {
+          setCards(prev => prev.filter(c => c.id !== deleteCardId))
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('pluggy:refresh'))
+          }
+        }
+      } else {
+        const { error } = await supabase
+          .from('credit_card')
+          .update({ is_archived: true, pluggy_account_id: null })
+          .eq('id', deleteCardId)
+          .eq('user_id', userId)
+
+        if (!error) {
+          setCards(prev => prev.filter(c => c.id !== deleteCardId))
+        }
+      }
+    } finally {
+      setDeletingCard(false)
+      setShowDeleteDialog(false)
+      setDeleteCardId(null)
     }
-    setShowDeleteDialog(false)
-    setDeleteCardId(null)
   }
   
   const resetForm = () => {
@@ -438,6 +491,7 @@ function CreditCardSection({ userId }: { userId: string }) {
                 className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/90 text-white hover:bg-red-600 rounded-full h-8 w-8 shadow-lg z-30"
                 onClick={() => {
                   setDeleteCardId(card.id)
+                  setDeleteWithRecords(true)
                   setShowDeleteDialog(true)
                 }}
               >
@@ -463,24 +517,102 @@ function CreditCardSection({ userId }: { userId: string }) {
       )}
 
       {/* AlertDialog for Delete Confirmation */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="rounded-[32px] sm:max-w-sm">
+      <AlertDialog
+        open={showDeleteDialog}
+        onOpenChange={open => {
+          if (!deletingCard) setShowDeleteDialog(open)
+        }}
+      >
+        <AlertDialogContent className="rounded-[32px] w-[95vw] sm:max-w-md p-6 sm:p-7">
           <AlertDialogHeader className="flex flex-col items-center text-center">
             <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center mb-2">
                <Trash2 className="h-8 w-8 text-red-500" />
             </div>
             <AlertDialogTitle className="text-xl font-bold">Excluir cartão?</AlertDialogTitle>
             <AlertDialogDescription className="font-medium text-slate-500">
-              Todos os gastos registrados neste cartão também serão excluídos. Essa ação é irreversível.
+              Você também gostaria de excluir os registros de gastos referentes a este cartão?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="grid grid-cols-2 gap-3 mt-4 sm:space-x-0">
-            <AlertDialogCancel className="h-12 rounded-xl border-slate-200 font-bold m-0 w-full hover:bg-slate-100">Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteCard}
-              className="h-12 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold m-0 w-full shadow-lg shadow-red-500/30"
+
+          <div className="space-y-2.5 my-2" role="radiogroup" aria-label="Opções de exclusão do cartão">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={deleteWithRecords}
+              disabled={deletingCard}
+              onClick={() => setDeleteWithRecords(true)}
+              className={`w-full flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-colors ${
+                deleteWithRecords
+                  ? 'border-red-500 bg-red-50/70 dark:bg-red-500/10'
+                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+              }`}
             >
-              Excluir
+              {deleteWithRecords ? (
+                <CheckCircle2 className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+              ) : (
+                <Circle className="h-5 w-5 text-slate-300 dark:text-slate-600 shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  Excluir também os registros de gastos
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Apaga todos os lançamentos e faturas deste cartão e limpa o histórico de sincronização do Open Finance (Pluggy).
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!deleteWithRecords}
+              disabled={deletingCard}
+              onClick={() => setDeleteWithRecords(false)}
+              className={`w-full flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-colors ${
+                !deleteWithRecords
+                  ? 'border-teal-500 bg-teal-50/70 dark:bg-teal-500/10'
+                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              {!deleteWithRecords ? (
+                <CheckCircle2 className="h-5 w-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+              ) : (
+                <Circle className="h-5 w-5 text-slate-300 dark:text-slate-600 shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  Manter os registros de gastos
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Remove apenas o cartão das Configurações, preservando os lançamentos existentes nas faturas e relatórios.
+                </p>
+              </div>
+            </button>
+          </div>
+
+          <AlertDialogFooter className="grid grid-cols-2 gap-3 mt-3 sm:space-x-0">
+            <AlertDialogCancel
+              disabled={deletingCard}
+              className="h-12 rounded-xl border-slate-200 font-bold m-0 w-full hover:bg-slate-100"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingCard}
+              onClick={e => {
+                e.preventDefault()
+                void handleDeleteCard()
+              }}
+              className="h-12 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold m-0 w-full shadow-lg shadow-red-500/30 gap-2"
+            >
+              {deletingCard ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Confirmar'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

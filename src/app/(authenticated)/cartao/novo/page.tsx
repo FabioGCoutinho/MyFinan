@@ -77,6 +77,7 @@ export default function NovoGastoCartao() {
           .from('credit_card')
           .select('*')
           .eq('user_id', user.id)
+          .eq('is_archived', false)
         setCards(data ?? [])
       }
       setLoading(false)

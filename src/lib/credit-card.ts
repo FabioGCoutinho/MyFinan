@@ -80,6 +80,7 @@ export interface CreditCard {
   closing_day: number
   created_at: string
   pluggy_account_id?: string | null
+  is_archived?: boolean
 }
 
 export interface CreditCardExpense {

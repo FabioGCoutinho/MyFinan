@@ -225,9 +225,7 @@ export async function POST(request: NextRequest) {
         for (const tx of txs) {
           const existing = syncMap.get(tx.id)
           if (!existing) {
-            if (tx.status !== 'PENDING') {
-              newlyPostedTxs.push(tx)
-            }
+            newlyPostedTxs.push(tx)
             continue
           }
 
